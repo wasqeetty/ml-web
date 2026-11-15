@@ -1,15 +1,50 @@
 rules_version = '2';
-// ML WEB — ใครล็อกอินแล้วอ่าน/เขียนได้เฉพาะข้อมูลของตัวเองที่ users/<uid> เท่านั้น
-// (โปรไฟล์อยู่ที่ users/<uid> ฟิลด์ profile, ข้อมูลอื่นอยู่ใต้ users/<uid>/sessions, tasks, slots, subjects, settings)
+// ML WEB — กฎความปลอดภัยของฐานข้อมูล
+// 1) ใครล็อกอินแล้วอ่าน/เขียนได้เฉพาะข้อมูลของตัวเองที่ users/<uid> เท่านั้น
+// 2) จำกัดขนาด/รูปแบบข้อมูล กันคนเขียนสคริปต์ยัดข้อมูลขยะจนโควตาฟรีเต็ม
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    function isMe(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+    // ฟิลด์ข้อความ f ถ้ามี ต้องเป็นข้อความยาวไม่เกิน n ตัวอักษร
+    function shortText(d, f, n) {
+      return !(f in d) || (d[f] is string && d[f].size() <= n);
+    }
+    // ข้อมูลทั่วไป (บันทึก งาน คาบเรียน วิชา การตั้งค่า)
+    function okItem(d) {
+      return d.keys().size() <= 20
+        && shortText(d, 'riverImg', 60000)
+        && shortText(d, 'note', 2000)
+        && shortText(d, 'title', 200)
+        && shortText(d, 'topicTitle', 200)
+        && shortText(d, 'name', 60)
+        && shortText(d, 'subjectId', 100);
+    }
+    // โปรไฟล์ที่กรอกตอนสมัคร
+    function okProfile(p) {
+      return p is map
+        && p.keys().hasOnly(['realName', 'nickname', 'age', 'favSubject', 'interests', 'photoURL', 'createdAt', 'updatedAt'])
+        && p.realName is string && p.realName.size() <= 80
+        && p.nickname is string && p.nickname.size() <= 40
+        && p.age is int && p.age >= 5 && p.age <= 100
+        && p.favSubject is string && p.favSubject.size() <= 40
+        && p.interests is list && p.interests.size() <= 20
+        && shortText(p, 'photoURL', 500);
+    }
+
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, delete: if isMe(uid);
+      allow create, update: if isMe(uid)
+        && request.resource.data.keys().hasOnly(['profile'])
+        && okProfile(request.resource.data.profile);
 
       match /{col}/{docId} {
-        allow read, delete: if request.auth != null && request.auth.uid == uid;
-        allow create, update: if request.auth != null && request.auth.uid == uid
-          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings'];
+        allow read, delete: if isMe(uid);
+        allow create, update: if isMe(uid)
+          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings']
+          && okItem(request.resource.data);
       }
     }
   }

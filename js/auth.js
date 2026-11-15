@@ -66,9 +66,16 @@ $("gGoogle").addEventListener("click", async () => {
 });
 async function signOut() {
   closeMenu();
-  if (A.Timer.info().status === "running" && !confirm("กำลังจับเวลาอยู่ ออกจากระบบตอนนี้รอบนี้จะยังค้างอยู่ในเครื่องนี้ ออกเลยไหม")) return;
-  if (FB) await auth.signOut();
-  else { localStorage.removeItem(LOCAL_USER); await onUser(null); }
+  const ts = A.Timer.info().status;
+  if (FB && (ts === "running" || ts === "paused") && !confirm("กำลังจับเวลาอยู่ ถ้าออกจากระบบตอนนี้ รอบนี้จะหายไปและไม่ถูกนับ ออกเลยไหม")) return;
+  if (FB && ts === "logging" && !confirm("รอบที่เรียนจบยังไม่ได้กดบันทึก ถ้าออกจากระบบตอนนี้ รอบนี้จะหายไป ออกเลยไหม")) return;
+  if (!FB) { localStorage.removeItem(LOCAL_USER); await onUser(null); return; }
+  gate("load");
+  // ล้างข้อมูลที่ค้างในเครื่อง (สำเนาออฟไลน์ของ Firestore + ตัวจับเวลา + ค่าที่จำไว้) กันคนใช้เครื่องต่อมาเห็น
+  try { A.stopStore(); await auth.signOut(); } catch (e) {}
+  try { localStorage.removeItem("mlweb.timer"); localStorage.removeItem("mlweb.pref"); } catch (e) {}
+  try { await A.fdb.terminate(); await A.fdb.clearPersistence(); } catch (e) {}
+  location.reload();
 }
 $("acctOut").addEventListener("click", signOut);
 $("pfOut").addEventListener("click", signOut);
