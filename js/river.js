@@ -82,7 +82,7 @@ function start() {
   unlockAudio();
   const plan = planOf(cfg()), luck = A.fishLuck(focusTotal(plan), A.streak(A.byDay()));
   T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, phases: plan, season: pickSeason(), fish: A.pickCatch(luck),
-        subjectId: $("tSubj").value || "", topicTitle: $("tFree").value.trim().slice(0, 120) };
+        subjectId: $("tSubj").value || "", topicTitle: $("tFree").value.trim().slice(0, 120), roomId: A.Rooms ? A.Rooms.activeId() : "" };
   saveT(); onStatus();
 }
 function pause() { T.status = "paused"; T.pausedAt = Date.now(); saveT(); onStatus(); }
@@ -221,7 +221,8 @@ function layout() {
   const host = inFocus ? $("stage") : $("port");
   if (cv.parentNode !== host) host.append(cv);
   $("fSubj").textContent = "";
-  if (T.status !== "idle") $("fSubj").append(A.chip(T.subjectId), T.topicTitle ? `  ·  ${T.topicTitle}` : "");
+  const rn = T.roomId && A.Rooms ? A.Rooms.name(T.roomId) : "";
+  if (T.status !== "idle") $("fSubj").append(A.chip(T.subjectId), T.topicTitle ? `  ·  ${T.topicTitle}` : "", rn ? `  ·  ${/^ห้อง/.test(rn) ? rn : "ห้อง " + rn}` : "");
 }
 $("bStart").addEventListener("click", () => start(false));
 $("bMin").addEventListener("click", () => { location.hash = "home"; });
@@ -579,7 +580,7 @@ A.Timer = {
   info() {
     const now = Date.now();
     return { status: T.status, phase: T.status === "running" || T.status === "paused" ? PH()[T.phase].k : null,
-             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle,
+             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle, roomId: T.roomId || "",
              // เวลาที่ทั้งรอบจะจบ (ใช้บอกเพื่อนในห้องเรียนว่าเหลืออีกกี่นาที) — คิดเฉพาะตอนกำลังเดิน
              endsAt: T.status === "running" ? T.phaseStart + PH().slice(T.phase).reduce((a, p) => a + p.m, 0) * MIN() : 0 };
   },

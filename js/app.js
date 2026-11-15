@@ -7,7 +7,8 @@ const PAGES = ["home", "timer", "log", "plan", "tasks", "calendar", "profile", "
 const SUB = [
   [/^u\/([\w-]{1,128})$/, "user", "profile"],
   [/^r\/([\w-]{1,60})(?:\/([\w-]{1,128}))?$/, "room", "rooms"],
-  [/^join\/([A-Za-z0-9]{6})$/, "join", "rooms"]
+  [/^join\/([A-Za-z0-9]{6})$/, "join", "rooms"],
+  [/^rooms\/(new|join)$/, "roomform", "rooms"]
 ];
 
 function route() {

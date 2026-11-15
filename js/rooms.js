@@ -1,5 +1,7 @@
 /* สายเรียน (SaiRian) — ห้องเรียน: สร้างห้อง เชิญเพื่อนด้วยรหัส/ลิงก์ ดูว่าใครเรียนไปเท่าไหร่ ใครกำลังเรียนอยู่ และกดดูแนวโน้มของเพื่อน
-   #rooms          = ห้องของฉัน (สร้าง / เข้าด้วยรหัส)
+   #rooms          = ห้องที่เข้าร่วม
+   #rooms/new      = สร้างห้อง
+   #rooms/join     = ใส่รหัสเข้าห้อง
    #r/<roomId>     = ตารางอันดับในห้อง
    #r/<roomId>/<uid> = ดูเพื่อนคนหนึ่ง
    #join/<CODE>    = ลิงก์เชิญ
@@ -96,17 +98,25 @@ function liveOf(m, now = Date.now()) {
 }
 
 /* ---------- ข้อมูลของฉันที่ส่งเข้าห้อง ---------- */
-let lastLive = null;
-function liveState() {
+/* ห้องที่ใช้อยู่ (เลือกได้ห้องเดียว): ตอนกดจับเวลา สถานะ "กำลังเรียน" จะขึ้นแค่ในห้องนี้ */
+const activeId = () => {
+  const id = A.pref.activeRoom || "";
+  return !R.myRooms || R.myRooms.some(r => r.id === id) ? id : "";
+};
+function setActive(id) { A.pref.activeRoom = id || ""; A.savePref(); fillRoomPick(); A.Rooms.syncSoon(); }
+const IDLE = { s: "idle", ph: "", sub: "", end: 0, at: 0 };
+let lastLive = {};
+function liveState(rid) {
   const i = A.Timer ? A.Timer.info() : { status: "idle" };
-  const cur = i.status === "running" || i.status === "paused"
-    ? { s: i.status, ph: i.phase || "", sub: str(A.subj(i.subjectId || "").name, 40), end: Math.round((i.endsAt || 0) / 60000) * 60000 }
-    : { s: "idle", ph: "", sub: "", end: 0 };
-  const same = lastLive && lastLive.s === cur.s && lastLive.ph === cur.ph && lastLive.sub === cur.sub && lastLive.end === cur.end;
-  if (!same) lastLive = { ...cur, at: Date.now() };
-  return lastLive;
+  const here = (i.status === "running" || i.status === "paused") && (i.roomId || "") === rid;
+  const cur = here ? { s: i.status, ph: i.phase || "", sub: str(A.subj(i.subjectId || "").name, 40), end: Math.round((i.endsAt || 0) / 60000) * 60000 }
+                   : { s: "idle", ph: "", sub: "", end: 0 };
+  const prev = lastLive[rid];
+  const same = prev && prev.s === cur.s && prev.ph === cur.ph && prev.sub === cur.sub && prev.end === cur.end;
+  if (!same) lastLive[rid] = cur.s === "idle" ? IDLE : { ...cur, at: Date.now() };
+  return lastLive[rid];
 }
-function myMember() {
+function myMember(rid) {
   const p = A.profile || {}, bd = A.byDay(), keys = Object.keys(bd).sort();
   const from = A.dateKey(A.addDays(new Date(), -(DAYS - 1)));
   const daily = {}; keys.forEach(k => { if (k >= from) daily[k] = bd[k].mins; });
@@ -119,7 +129,7 @@ function myMember() {
   return {
     nickname: str(p.nickname, 40), photoURL: safePhoto(A.user && A.user.photoURL), accent: safeAccent(p.accent),
     daily, total: sess.reduce((a, s) => a + (s.focusMin || 0), 0), rounds: sess.length,
-    streak: A.streak(bd), best, lastDate: keys[keys.length - 1] || "", subjects, fishN: fish.size, live: liveState()
+    streak: A.streak(bd), best, lastDate: keys[keys.length - 1] || "", subjects, fishN: fish.size, live: liveState(rid || "")
   };
 }
 
@@ -159,8 +169,8 @@ function watchRoom(rid) {
 let lastSent = {}, syncT = null;
 async function syncNow() {
   if (!R.uid || !R.myRooms || !A.user || !A.profile || !["db", "local"].includes(A.store.mode)) return;
-  const me = myMember(), key = JSON.stringify(me);
   for (const r of R.myRooms) {
+    const me = myMember(r.id), key = JSON.stringify(me);
     const raw = R.mine[r.id];
     if (!raw || R.err[r.id] || (R.rooms[r.id] && R.rooms[r.id].gone)) continue;      // ยังโหลดไม่เสร็จ / ถูกเอาออกจากห้องแล้ว
     if (lastSent[r.id] === key) continue;
@@ -181,9 +191,10 @@ async function createRoom(name) {
       await db().batch([
         ["set", `rooms/${rid}`, { name, owner: uid, code, createdAt: now }],
         ["set", `invites/${code}`, { roomId: rid, name, owner: uid }],
-        ["set", `rooms/${rid}/members/${uid}`, { ...myMember(), code, joinedAt: now, updatedAt: now }],
+        ["set", `rooms/${rid}/members/${uid}`, { ...myMember(rid), code, joinedAt: now, updatedAt: now }],
         ["set", `users/${uid}/rooms/${rid}`, { name, joinedAt: now }]
       ]);
+      setActive(rid);
       return rid;
     } catch (e) { lastErr = e; if (e.code !== "permission-denied") break; }
   }
@@ -197,9 +208,10 @@ async function joinByCode(code) {
   if ((R.myRooms || []).length >= MAX_ROOMS) throw new Error(`อยู่ได้สูงสุด ${MAX_ROOMS} ห้อง ออกจากห้องเก่าก่อน`);
   const now = new Date().toISOString(), name = str(inv.name, 40) || "ห้องเรียน";
   await db().batch([
-    ["set", `rooms/${rid}/members/${uid}`, { ...myMember(), code, joinedAt: now, updatedAt: now }],
+    ["set", `rooms/${rid}/members/${uid}`, { ...myMember(rid), code, joinedAt: now, updatedAt: now }],
     ["set", `users/${uid}/rooms/${rid}`, { name, joinedAt: now }]
   ]);
+  setActive(rid);
   const all = await db().list(`rooms/${rid}/members`).catch(() => []);
   if (all.length > MAX_MEMBERS) {                                   // ห้องเต็ม → ถอยออก
     await leaveRoom(rid).catch(() => {});
@@ -207,8 +219,9 @@ async function joinByCode(code) {
   }
   return rid;
 }
-const leaveRoom = rid => db().batch([["del", `rooms/${rid}/members/${A.user.uid}`], ["del", `users/${A.user.uid}/rooms/${rid}`]]);
+const leaveRoom = rid => (activeId() === rid && setActive(""), db().batch([["del", `rooms/${rid}/members/${A.user.uid}`], ["del", `users/${A.user.uid}/rooms/${rid}`]]));
 async function deleteRoom(rid) {
+  if (activeId() === rid) setActive("");
   const room = R.rooms[rid] || {}, members = await db().list(`rooms/${rid}/members`);
   await db().batch([
     ...members.filter(m => m.id !== A.user.uid).map(m => ["del", `rooms/${rid}/members/${m.id}`]),
@@ -252,64 +265,87 @@ async function copyInvite(code) {
   } catch (e) { if (e.name !== "AbortError") prompt("คัดลอกลิงก์นี้ส่งให้เพื่อน", url); }
 }
 
-/* ---------- #rooms : ห้องของฉัน ---------- */
+/* ---------- #rooms : ห้องที่เข้าร่วม (+ ปุ่มไปสร้างห้อง / ใส่รหัส ซึ่งแยกไปอีกหน้า) ---------- */
 let listKey = "";
 function renderList(force) {
   const box = $("rmRoot");
   if (!A.user || !A.profile) { listKey = ""; box.textContent = ""; needLogin(box); return; }
-  if (box.contains(document.activeElement) && document.activeElement.matches("input") && force !== true) return;   // กำลังพิมพ์อยู่
+  const act = activeId();
   const rows = (R.myRooms || []).map(r => {
     const mem = R.members[r.id] || [], room = R.rooms[r.id];
     const live = mem.filter(m => { const l = liveOf(m); return l && l.on; }).length;
     const sorted = mem.map(m => ({ m, f: figures(m) })).sort((a, b) => b.f.week - a.f.week);
     const rank = sorted.findIndex(x => x.m.id === R.uid) + 1;
-    const wk = sorted.reduce((a, x) => a + x.f.week, 0);
-    return { id: r.id, name: (room && room.name) || r.name, n: mem.length, live, rank, wk, gone: !!(room && room.gone) || !!R.err[r.id], loaded: !!room };
+    return { id: r.id, name: (room && room.name) || r.name, n: mem.length, live, rank, gone: !!(room && room.gone) || !!R.err[r.id], loaded: !!room, act: r.id === act };
   });
   const key = JSON.stringify([R.myRooms === null, rows, R.listErr || ""]);
   if (key === listKey && box.firstChild && force !== true) return;
-  listKey = key; roomKey = ""; joinShown = ""; box.textContent = "";
-  box.append(head("ห้องเรียนของฉัน", "เรียนไปด้วยกันกับเพื่อน"));
+  listKey = key; roomKey = ""; joinShown = ""; formShown = ""; box.textContent = "";
+  box.append(head("ห้องเรียน", "เรียนไปด้วยกันกับเพื่อน"));
 
-  const nameIn = el("input", { type: "text", id: "rmName", maxlength: "40", required: true, placeholder: "เช่น ม.5/2 ติวสอบกลางภาค", value: `ห้องของ ${A.profile.nickname || ""}`.trim() });
-  const createF = el("form", { class: "glass rm-box", onsubmit: async e => {
-    e.preventDefault(); const b = e.submitter || createF.querySelector("button"); const name = nameIn.value.trim().slice(0, 40);
-    if (!name) return nameIn.focus();
-    b.disabled = true;
-    try { const rid = await createRoom(name); A.pref.rmFresh = rid; A.savePref(); location.hash = `r/${rid}`; }
-    catch (err) { A.toast(err.code ? errMsg(err) : err.message); }
-    finally { b.disabled = false; }
-  } },
-    el("h2", { text: "สร้างห้องใหม่" }),
-    el("p", { class: "muted sm", text: `ได้รหัสห้องกับลิงก์ไว้ชวนเพื่อน ห้องละไม่เกิน ${MAX_MEMBERS} คน` }),
-    el("div", { class: "rm-row" }, el("label", { class: "vh", for: "rmName", text: "ชื่อห้อง" }), nameIn,
-      el("button", { type: "submit", class: "btn primary", text: "สร้างห้อง" })));
-  const codeIn = el("input", { type: "text", id: "rmCode", maxlength: "6", required: true, autocomplete: "off", autocapitalize: "characters", spellcheck: "false", placeholder: "ABC234", class: "rm-code-in" });
-  codeIn.addEventListener("input", () => { const p = codeIn.selectionStart; codeIn.value = normCode(codeIn.value); codeIn.setSelectionRange(p, p); });
-  const joinF = el("form", { class: "glass rm-box", onsubmit: async e => {
-    e.preventDefault(); const code = normCode(codeIn.value);
-    if (code.length !== 6) { A.toast("รหัสห้องมี 6 ตัว"); return codeIn.focus(); }
-    location.hash = `join/${code}`;
-  } },
-    el("h2", { text: "เข้าห้องด้วยรหัส" }),
-    el("p", { class: "muted sm", text: "ขอรหัส 6 ตัวจากเพื่อนที่สร้างห้อง หรือกดลิงก์เชิญที่เพื่อนส่งมา" }),
-    el("div", { class: "rm-row" }, el("label", { class: "vh", for: "rmCode", text: "รหัสห้อง" }), codeIn,
-      el("button", { type: "submit", class: "btn", text: "เข้าห้อง" })));
+  box.append(el("div", { class: "rm-actions" },
+    el("a", { class: "rm-act new", href: "#rooms/new" },
+      el("span", { class: "rm-act-ic", "aria-hidden": "true", text: "+" }),
+      el("span", {}, el("b", { text: "สร้างห้อง" }), el("small", { text: "ตั้งชื่อห้อง แล้วชวนเพื่อน" }))),
+    el("a", { class: "rm-act join", href: "#rooms/join" },
+      el("span", { class: "rm-act-ic", "aria-hidden": "true", text: "#" }),
+      el("span", {}, el("b", { text: "ใส่รหัสเข้าห้อง" }), el("small", { text: "มีรหัส 6 ตัวจากเพื่อน" })))));
 
   const list = el("div", { class: "rm-list" });
-  if (R.myRooms === null) list.append(el("p", { class: "muted", text: "กำลังโหลดห้อง…" }));
-  else if (R.listErr) list.append(el("p", { class: "err", text: `โหลดรายชื่อห้องไม่สำเร็จ: ${R.listErr}` }));
-  else if (!rows.length) list.append(el("div", { class: "glass rm-empty" },
-    el("p", { class: "rm-empty-t", text: "ยังไม่มีห้องเรียน" }),
-    el("p", { class: "muted sm", text: "สร้างห้องแล้วชวนเพื่อน หรือใส่รหัสห้องที่เพื่อนส่งมา" })));
-  rows.forEach(r => list.append(el("a", { class: "glass rm-card" + (r.gone ? " gone" : ""), href: `#r/${r.id}` },
-    el("div", { class: "rm-card-t" }, el("b", { text: r.name }),
+  box.append(el("h2", { class: "rm-sec", text: `ห้องที่เข้าร่วม${rows.length ? ` (${rows.length})` : ""}` }), list);
+  if (R.myRooms === null) { list.append(el("p", { class: "muted", text: "กำลังโหลดห้อง…" })); return; }
+  if (R.listErr) { list.append(el("p", { class: "err", text: `โหลดรายชื่อห้องไม่สำเร็จ: ${R.listErr}` })); return; }
+  if (!rows.length) { list.append(el("div", { class: "glass rm-empty" },
+    el("p", { class: "rm-empty-t", text: "ยังไม่ได้เข้าห้องไหน" }),
+    el("p", { class: "muted sm", text: "กด “สร้างห้อง” แล้วชวนเพื่อน หรือ “ใส่รหัสเข้าห้อง” ถ้าเพื่อนส่งรหัสมา" }))); return; }
+  rows.forEach(r => list.append(el("a", { class: "glass rm-card" + (r.gone ? " gone" : "") + (r.act ? " act" : ""), href: `#r/${r.id}` },
+    el("div", { class: "rm-card-t" },
+      el("b", {}, r.name, r.act ? el("span", { class: "rm-using", text: "ห้องที่ใช้อยู่" }) : null),
       r.gone ? el("span", { class: "muted sm", text: "เข้าไม่ได้แล้ว (ห้องถูกลบหรือถูกเอาออก)" })
         : el("span", { class: "muted sm", text: r.loaded ? `${r.n} คน${r.rank ? ` · คุณอันดับ ${r.rank} สัปดาห์นี้` : ""}` : "กำลังโหลด…" })),
-    r.gone ? null : el("div", { class: "rm-card-r" },
-      r.live ? el("span", { class: "rm-live-n" }, el("i", { class: "rm-dot on", "aria-hidden": "true" }), `กำลังเรียน ${r.live} คน`) : null,
-      el("span", { class: "rm-card-h", text: `ทั้งห้อง ${fmtMin(r.wk)}` })))));
-  box.append(el("h2", { class: "rm-sec", text: "ห้องที่อยู่" }), list, el("div", { class: "rm-two" }, createF, joinF));
+    r.gone || !r.live ? null : el("span", { class: "rm-live-n" }, el("i", { class: "rm-dot on", "aria-hidden": "true" }), `กำลังเรียน ${r.live} คน`))));
+  if (rows.length > 1) box.append(el("p", { class: "muted sm", text: "ตอนจับเวลา สถานะ “กำลังเรียน” จะขึ้นเฉพาะห้องที่ใช้อยู่ เปลี่ยนห้องได้ที่หน้าจับเวลาหรือในหน้าห้อง เวลาเรียนรวมยังนับทุกห้อง" }));
+}
+
+/* ---------- #rooms/new และ #rooms/join : ฟอร์มแยกหน้า ---------- */
+let formShown = "";
+function renderForm() {
+  const box = $("rmRoot"), kind = A.pageParam === "join" ? "join" : "new";
+  if (!A.user || !A.profile) { formShown = ""; box.textContent = ""; needLogin(box); return; }
+  if (formShown === kind && box.firstChild) return;
+  formShown = kind; listKey = ""; roomKey = ""; joinShown = "";
+  box.textContent = "";
+  const back = el("a", { class: "btn sm", href: "#rooms", text: "← ห้องเรียน" });
+  if (kind === "new") {
+    const nameIn = el("input", { type: "text", id: "rmName", maxlength: "40", required: true, class: "rm-big-in", placeholder: "เช่น ม.5/2 ติวสอบกลางภาค", value: `ห้องของ ${A.profile.nickname || ""}`.trim() });
+    const btn = el("button", { type: "submit", class: "cta" }, el("span", { text: "สร้างห้อง" }), el("i", { class: "cta-dot", "aria-hidden": "true" }, svgArrow()));
+    const f = el("form", { class: "glass rm-form", onsubmit: async e => {
+      e.preventDefault(); const name = nameIn.value.trim().slice(0, 40);
+      if (!name) return nameIn.focus();
+      btn.disabled = true;
+      try { const rid = await createRoom(name); A.pref.rmFresh = rid; A.savePref(); location.hash = `r/${rid}`; }
+      catch (err) { A.toast(err.code ? errMsg(err) : err.message); btn.disabled = false; }
+    } },
+      el("label", { for: "rmName", class: "rm-lbl", text: "ตั้งชื่อห้อง" }), nameIn,
+      el("p", { class: "muted sm", text: `สร้างเสร็จจะได้รหัส 6 ตัวกับลิงก์ไว้ส่งให้เพื่อน ห้องละไม่เกิน ${MAX_MEMBERS} คน` }),
+      el("div", { class: "actions" }, btn));
+    box.append(head("สร้างห้อง", "ห้องเรียน", back), f);
+    setTimeout(() => { nameIn.focus(); nameIn.select(); });
+  } else {
+    const codeIn = el("input", { type: "text", id: "rmCode", maxlength: "6", required: true, autocomplete: "off", autocapitalize: "characters", spellcheck: "false", inputmode: "text", placeholder: "ABC234", class: "rm-big-in rm-code-in" });
+    codeIn.addEventListener("input", () => { codeIn.value = normCode(codeIn.value); });
+    const btn = el("button", { type: "submit", class: "cta" }, el("span", { text: "เข้าห้อง" }), el("i", { class: "cta-dot", "aria-hidden": "true" }, svgArrow()));
+    const f = el("form", { class: "glass rm-form", onsubmit: e => {
+      e.preventDefault(); const code = normCode(codeIn.value);
+      if (code.length !== 6) { A.toast("รหัสห้องมี 6 ตัว"); return codeIn.focus(); }
+      location.hash = `join/${code}`;
+    } },
+      el("label", { for: "rmCode", class: "rm-lbl", text: "รหัสห้อง 6 ตัว" }), codeIn,
+      el("p", { class: "muted sm", text: "ขอรหัสจากเพื่อนที่สร้างห้อง (กดปุ่ม “ชวนเพื่อน” ในห้องจะเห็นรหัส) หรือกดลิงก์เชิญที่เพื่อนส่งมาก็ได้" }),
+      el("div", { class: "actions" }, btn));
+    box.append(head("ใส่รหัสเข้าห้อง", "ห้องเรียน", back), f);
+    setTimeout(() => codeIn.focus());
+  }
 }
 
 /* ---------- #join/<CODE> ---------- */
@@ -318,7 +354,7 @@ async function renderJoin() {
   const box = $("rmRoot"), code = normCode(A.pageParam);
   if (!A.user || !A.profile) { joinShown = ""; box.textContent = ""; needLogin(box); return; }
   if (joinShown === code) return;
-  joinShown = code; const my = ++joinSeq; listKey = ""; roomKey = "";
+  joinShown = code; const my = ++joinSeq; listKey = ""; roomKey = ""; formShown = "";
   box.textContent = ""; box.append(head("ลิงก์เชิญเข้าห้อง", `รหัส ${code}`), el("p", { class: "muted", text: "กำลังหาห้อง…" }));
   let inv = null, err = null;
   try { inv = await db().get(`invites/${code}`); } catch (e) { err = e; }
@@ -356,9 +392,9 @@ function renderRoom(force) {
   const room = R.rooms[rid], mem = R.members[rid], err = R.err[rid];
   const metric = METRICS[A.pref.rmMetric] ? A.pref.rmMetric : "week";
   const minute = Math.floor(Date.now() / 60000);
-  const key = JSON.stringify([rid, uidSel, room || null, mem || null, err ? err.code || "e" : "", metric, minute, A.pref.rmFresh === rid]);
+  const key = JSON.stringify([rid, uidSel, room || null, mem || null, err ? err.code || "e" : "", metric, minute, A.pref.rmFresh === rid, activeId()]);
   if (key === roomKey && box.firstChild && force !== true) return;
-  roomKey = key; listKey = ""; joinShown = "";
+  roomKey = key; listKey = ""; joinShown = ""; formShown = "";
   const focusTools = box.querySelector(".rm-seg button:focus") ? document.activeElement.dataset.m : null;
   box.textContent = "";
   if (err || (room && room.gone)) {
@@ -382,6 +418,13 @@ function renderRoom(force) {
     el("button", { type: "button", class: "btn sm", onclick: () => toggleInvite(), "aria-expanded": "false", id: "rmInvBtn", text: "ชวนเพื่อน" }),
     el("a", { class: "btn sm", href: "#rooms", text: "ห้องทั้งหมด" })));
   box.append(invitePanel(room, isOwner, rid));
+  const using = activeId() === rid;
+  box.append(el("div", { class: "rm-use" + (using ? " on" : "") },
+    el("span", { class: "rm-use-t" }, using ? el("b", { text: "ห้องที่ใช้อยู่" }) : null,
+      using ? " ตอนจับเวลา เพื่อนในห้องนี้จะเห็นว่าคุณกำลังเรียน" : "ห้องนี้ยังไม่ใช่ห้องที่ใช้อยู่ ตอนจับเวลาเพื่อนห้องนี้จะไม่เห็นว่าคุณกำลังเรียน"),
+    el("span", { class: "rm-use-b" },
+      using ? null : el("button", { type: "button", class: "btn sm", onclick: () => { setActive(rid); A.toast("เปลี่ยนเป็นห้องที่ใช้อยู่แล้ว"); renderRoom(true); }, text: "ใช้ห้องนี้" }),
+      el("button", { type: "button", class: "btn primary sm", onclick: () => { setActive(rid); location.hash = "timer"; }, text: "เริ่มเรียนในห้องนี้" }))));
 
   box.append(el("div", { class: "rm-tiles" },
     tile(fmtMin(sum("week")), "ทั้งห้องเรียนสัปดาห์นี้"),
@@ -528,6 +571,24 @@ function chart(days, color, nick) {
   return s;
 }
 
+/* ---------- ตัวเลือกห้องในหน้าจับเวลา ---------- */
+function fillRoomPick() {
+  const w = $("tRoomW"), sel = $("tRoom"); if (!w || !sel) return;
+  const rooms = (R.myRooms || []).filter(r => !(R.rooms[r.id] && R.rooms[r.id].gone) && !R.err[r.id]);
+  w.hidden = !rooms.length;
+  if (!rooms.length) return;
+  const info = A.Timer ? A.Timer.info() : { status: "idle" }, busy = info.status !== "idle";
+  const want = busy ? info.roomId || "" : activeId();
+  const sig = JSON.stringify([rooms.map(r => [r.id, (R.rooms[r.id] || {}).name || r.name]), want, busy]);
+  if (sel.dataset.sig === sig) return;
+  sel.dataset.sig = sig; sel.textContent = "";
+  sel.append(el("option", { value: "", text: "ไม่เข้าห้อง (เรียนคนเดียว)" }));
+  rooms.forEach(r => sel.append(el("option", { value: r.id, text: (R.rooms[r.id] || {}).name || r.name })));
+  sel.value = rooms.some(r => r.id === want) ? want : "";
+  sel.disabled = busy;
+}
+document.addEventListener("change", e => { if (e.target && e.target.id === "tRoom") setActive(e.target.value); });
+
 /* ---------- เชื่อมกับแอป ---------- */
 function homeNote() {
   const n = $("fRoomK"); if (!n) return;
@@ -540,10 +601,13 @@ function rerender() { if (A.page === "rooms") renderList(); else if (A.page === 
 setInterval(() => { if (A.page === "room") renderRoom(); else if (A.page === "rooms") renderList(); }, 30000);
 A.Rooms = {
   reset,
-  sync() { ensureListening(); homeNote(); clearTimeout(syncT); syncT = setTimeout(syncNow, 2000); },
-  syncSoon() { ensureListening(); clearTimeout(syncT); syncT = setTimeout(syncNow, 400); }
+  sync() { ensureListening(); homeNote(); fillRoomPick(); clearTimeout(syncT); syncT = setTimeout(syncNow, 2000); },
+  activeId: () => activeId(),
+  name: id => { const r = (R.myRooms || []).find(x => x.id === id); return id ? ((R.rooms[id] || {}).name || (r && r.name) || "") : ""; },
+  syncSoon() { ensureListening(); fillRoomPick(); clearTimeout(syncT); syncT = setTimeout(syncNow, 400); }
 };
 A.pages.rooms = () => { ensureListening(); renderList(); };
 A.pages.room = () => { ensureListening(); renderRoom(); };
 A.pages.join = () => { ensureListening(); renderJoin(); };
+A.pages.roomform = () => { ensureListening(); renderForm(); };
 })();
