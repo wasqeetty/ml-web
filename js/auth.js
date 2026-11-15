@@ -53,6 +53,7 @@ $("gGoogle").addEventListener("click", async () => {
   const btn = $("gGoogle"); $("gErr").textContent = ""; btn.disabled = true;
   try {
     if (!FB) { const u = { uid: "local", displayName: "ผู้ทดสอบ", email: "โหมดทดลอง", photoURL: "" }; A.lsSet(LOCAL_USER, u); await onUser(u); return; }
+    if (useGIS()) { gisSignIn(btn); return; }                 // มือถือ/แท็บเล็ต: หน้าต่างของ Google โดยตรง
     const p = new firebase.auth.GoogleAuthProvider();
     p.setCustomParameters({ prompt: "select_account" });
     try { await auth.signInWithPopup(p); }
@@ -62,8 +63,33 @@ $("gGoogle").addEventListener("click", async () => {
     }
   } catch (e) {
     if (e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request") $("gErr").textContent = authMsg(e);
-  } finally { btn.disabled = false; }
+  } finally { if (!gisBusy) btn.disabled = false; }
 });
+/* ล็อกอินบนมือถือ/แท็บเล็ต: ขอ token จาก Google ผ่านหน้าต่างของ Google (Google Identity Services)
+   แล้วส่งให้ Firebase ในหน้าเว็บนี้เอง — ไม่ต้องเด้งไปโดเมน firebaseapp.com ซึ่ง Safari/Chrome มือถือบล็อก
+   จนล็อกอินเสร็จแล้วถูกพากลับมาหน้าล็อกอิน */
+const TOUCH = matchMedia("(pointer:coarse)").matches || navigator.maxTouchPoints > 1;
+let gisBusy = false, tokenClient = null;
+const useGIS = () => TOUCH && !!window.GOOGLE_CLIENT_ID && !!(window.google && google.accounts && google.accounts.oauth2);
+function gisSignIn(btn) {
+  const done = () => { gisBusy = false; btn.disabled = false; };
+  if (!tokenClient) tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: window.GOOGLE_CLIENT_ID, scope: "openid email profile", prompt: "select_account",
+    callback: async r => {
+      if (!r || r.error || !r.access_token) { if (r && r.error !== "access_denied") $("gErr").textContent = `เข้าสู่ระบบไม่สำเร็จ (${(r && r.error) || "error"}) ลองใหม่อีกครั้ง`; done(); return; }
+      gate("load");
+      try { await auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(null, r.access_token)); }
+      catch (e) { gate("login"); $("gErr").textContent = authMsg(e); }
+      finally { done(); }
+    },
+    error_callback: e => {
+      if (e && e.type === "popup_failed_to_open") $("gErr").textContent = "เปิดหน้าต่างล็อกอินไม่ได้ ลองอนุญาตป๊อปอัปสำหรับเว็บนี้ แล้วกดอีกครั้ง";
+      done();
+    }
+  });
+  gisBusy = true;
+  tokenClient.requestAccessToken();
+}
 async function signOut() {
   closeMenu();
   const ts = A.Timer.info().status;

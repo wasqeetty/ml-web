@@ -9,3 +9,7 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "424588834352",
   appId: "1:424588834352:web:b6f30a0a1276600b961ff5"
 };
+/* Web client ID ของ Google (ไม่ใช่รหัสลับ) ใช้ล็อกอินบนมือถือ/แท็บเล็ตผ่านหน้าต่างของ Google โดยตรง
+   เพราะ Safari (iPhone/iPad) และ Chrome มือถือบล็อกการล็อกอินแบบเด้งข้ามโดเมนของ Firebase
+   ต้องเพิ่ม https://wasqeetty.github.io ใน Authorized JavaScript origins ของ client นี้ใน Google Cloud console ก่อน */
+window.GOOGLE_CLIENT_ID = "424588834352-dk5iicrlrdv1q795dpsdlhau5k88os63.apps.googleusercontent.com";
