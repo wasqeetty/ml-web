@@ -164,14 +164,12 @@ $("profF").addEventListener("submit", async e => {
   if (!interests.length) return bad("เลือกความสนใจอย่างน้อย 1 อย่าง", "pfIntNew");
   err.textContent = "";
   const now = new Date().toISOString();
-  const profile = { realName: realName.slice(0, 80), nickname: nickname.slice(0, 40), age, favSubject, interests,
+  const profile = { ...(A.profile || {}), realName: realName.slice(0, 80), nickname: nickname.slice(0, 40), age, favSubject, interests,
                     photoURL: A.user.photoURL || "", createdAt: (A.profile && A.profile.createdAt) || now, updatedAt: now };
   const btn = $("pfSave"); btn.disabled = true;
   try {
-    if (FB) await A.fdb.doc(`users/${A.user.uid}`).set({ profile }, { merge: true });
-    else A.lsSet(LOCAL_PROFILE, profile);
     const first = !A.profile;
-    A.profile = profile;
+    await saveProfile(profile);
     if (first) await A.seedIfEmpty(favSubject);
     enter();
     A.toast(first ? `ยินดีต้อนรับ ${nickname} เริ่มเรียนรอบแรกได้เลย` : "บันทึกโปรไฟล์แล้ว");
@@ -197,6 +195,7 @@ $("acctBtn").addEventListener("click", e => {
 document.addEventListener("click", e => { if (!$("acct").contains(e.target)) closeMenu(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("acctMenu").hidden) { closeMenu(); $("acctBtn").focus(); } });
 $("acctEdit").addEventListener("click", () => { closeMenu(); openProfile(true); });
+$("acctProfile").addEventListener("click", () => closeMenu());
 
 /* นำเข้าข้อมูลจากไฟล์ส่งออกของเวอร์ชันเก่า: { sessions: {id: {...}}, tasks: {...}, slots, subjects, settings } */
 $("acctImport").addEventListener("change", async e => {
@@ -213,8 +212,17 @@ $("acctImport").addEventListener("change", async e => {
   } catch (err) { A.toast(`นำเข้าไม่สำเร็จ (${err.code || err.message || "error"})`); }
 });
 
+async function saveProfile(profile) {
+  const p = { ...profile, updatedAt: new Date().toISOString() };
+  if (FB) await A.fdb.doc(`users/${A.user.uid}`).set({ profile: p });
+  else A.lsSet(LOCAL_PROFILE, p);
+  A.profile = p; renderAcct();
+}
+
 /* ---------- เริ่ม ---------- */
 A.Auth = {
+  edit() { openProfile(true); },
+  saveProfile,
   start() {
     gate("load");
     if (FB) {

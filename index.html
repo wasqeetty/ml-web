@@ -45,7 +45,8 @@
       </button>
       <div class="acct-menu" id="acctMenu" hidden>
         <div class="acct-who"><b id="acctName"></b><span id="acctMail"></span></div>
-        <button type="button" class="menu-item" id="acctEdit">แก้ไขโปรไฟล์</button>
+        <a class="menu-item" href="#profile" id="acctProfile">โปรไฟล์ของฉัน</a>
+        <button type="button" class="menu-item" id="acctEdit">แก้ข้อมูลส่วนตัว</button>
         <label class="menu-item" for="acctImport">นำเข้าข้อมูลจากเวอร์ชันเก่า (.json)</label>
         <input type="file" id="acctImport" accept=".json,application/json" class="vh">
         <button type="button" class="menu-item danger" id="acctOut">ออกจากระบบ</button>
@@ -275,6 +276,12 @@
   </div>
 </section>
 
+<!-- ============ PROFILE (#profile ของตัวเอง, #u/<uid> ของคนอื่น) ============ -->
+<section class="page" data-page="profile" hidden>
+  <h1 class="vh" id="pfH" tabindex="-1">โปรไฟล์</h1>
+  <div id="pfRoot"></div>
+</section>
+
 <p class="foot"><span id="storeNote"></span></p>
 </main>
 
@@ -394,6 +401,7 @@
 <script src="js/data.js"></script>
 <script src="js/river.js"></script>
 <script src="js/pages.js"></script>
+<script src="js/profile.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/app.js"></script>
 </body>

@@ -2,15 +2,16 @@
 (() => {
 "use strict";
 const A = App, $ = A.$;
-const PAGES = ["home", "timer", "log", "plan", "tasks", "calendar"];
+const PAGES = ["home", "timer", "log", "plan", "tasks", "calendar", "profile"];
 
 function route() {
   const h = location.hash.replace("#", "");
-  const page = PAGES.includes(h) ? h : "home";
-  const changed = A.page !== page;
-  A.page = page;
-  document.body.dataset.page = page;
-  document.querySelectorAll(".page").forEach(s => { s.hidden = s.dataset.page !== page; });
+  const m = /^u\/([\w-]{1,128})$/.exec(h);
+  const page = m ? "user" : PAGES.includes(h) ? h : "home", section = page === "user" ? "profile" : page;
+  const changed = A.page !== page || A.pageParam !== (m ? m[1] : null);
+  A.page = page; A.pageParam = m ? m[1] : null;
+  document.body.dataset.page = section;
+  document.querySelectorAll(".page").forEach(s => { s.hidden = s.dataset.page !== section; });
   document.querySelectorAll("[data-nav]").forEach(a => {
     if (a.dataset.nav === page) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
@@ -18,7 +19,7 @@ function route() {
   A.Timer.layout();
   if (changed) { window.scrollTo(0, 0); const h1 = document.querySelector(`.page[data-page="${page}"] h1`); if (h1) h1.focus({ preventScroll: true }); }
 }
-function render() { const fn = A.pages[A.page]; if (fn) fn(); renderStoreNote(); A.renderStreak(); }
+function render() { const fn = A.pages[A.page]; if (fn) fn(); renderStoreNote(); A.renderStreak(); if (A.syncPublic) A.syncPublic(); }
 
 function renderStoreNote() {
   const m = {
