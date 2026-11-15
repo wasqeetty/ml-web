@@ -156,13 +156,28 @@ function ensureListening() {
     rerender(); A.Rooms.sync();
   }, e => { R.myRooms = []; R.listErr = errMsg(e); rerender(); }));
 }
-function watchRoom(rid) {
+/* ฟังห้องหนึ่ง: ข้อมูลห้อง + สมาชิก
+   ถ้าโดนปฏิเสธ ลองใหม่อีกหลายครั้งก่อนสรุปว่าเข้าไม่ได้ เพราะตอนเพิ่งสร้าง/เพิ่งเข้าห้อง
+   เครื่องเราเห็นห้องก่อนที่เซิร์ฟเวอร์จะบันทึกเสร็จ (ครั้งแรกจึงอาจโดนปฏิเสธทั้งที่เป็นสมาชิกแล้ว) */
+function watchRoom(rid, attempt = 0) {
   if (roomUnsubs.has(rid)) return;
-  const u1 = db().onDoc(`rooms/${rid}`, d => { R.rooms[rid] = d || { gone: true }; delete R.err[rid]; rerender(); },
-    e => { R.err[rid] = e; rerender(); });
-  const u2 = db().onCol(`rooms/${rid}/members`, list => { R.members[rid] = list.map(cleanMember); R.mine[rid] = list.find(m => m.id === R.uid) || null; rerender(); },
-    e => { R.err[rid] = e; rerender(); });
-  roomUnsubs.set(rid, () => { u1(); u2(); });
+  let dead = false, u1 = null, u2 = null;
+  const stop = () => { try { u1 && u1(); } catch (e) {} try { u2 && u2(); } catch (e) {} };
+  const fail = e => {
+    if (dead) return; dead = true; stop();
+    if (attempt < 6) {                                              // 0.8 + 1.6 + 3.2 + 6.4 + 12.8 + 25.6 ≈ 50 วินาที
+      const t = setTimeout(() => { roomUnsubs.delete(rid); if (R.uid) watchRoom(rid, attempt + 1); }, 800 * 2 ** attempt);
+      roomUnsubs.set(rid, () => clearTimeout(t));
+    } else { roomUnsubs.set(rid, () => {}); R.err[rid] = e; rerender(); }
+  };
+  u1 = db().onDoc(`rooms/${rid}`, d => { R.rooms[rid] = d || { gone: true }; delete R.err[rid]; rerender(); }, fail);
+  u2 = db().onCol(`rooms/${rid}/members`, list => { R.members[rid] = list.map(cleanMember); R.mine[rid] = list.find(m => m.id === R.uid) || null; delete R.err[rid]; rerender(); }, fail);
+  roomUnsubs.set(rid, () => { dead = true; stop(); });
+}
+/* เริ่มฟังห้องใหม่ตั้งแต่ต้น (หลังเข้าห้องสำเร็จ) */
+function rewatch(rid) {
+  const u = roomUnsubs.get(rid); if (u) { try { u(); } catch (e) {} roomUnsubs.delete(rid); }
+  delete R.err[rid]; watchRoom(rid);
 }
 
 /* ---------- ส่งข้อมูลของฉันเข้าทุกห้อง (เฉพาะเมื่อมีอะไรเปลี่ยน) ---------- */
@@ -194,7 +209,7 @@ async function createRoom(name) {
         ["set", `rooms/${rid}/members/${uid}`, { ...myMember(rid), code, joinedAt: now, updatedAt: now }],
         ["set", `users/${uid}/rooms/${rid}`, { name, joinedAt: now }]
       ]);
-      setActive(rid);
+      setActive(rid); rewatch(rid);
       return rid;
     } catch (e) { lastErr = e; if (e.code !== "permission-denied") break; }
   }
@@ -211,7 +226,7 @@ async function joinByCode(code) {
     ["set", `rooms/${rid}/members/${uid}`, { ...myMember(rid), code, joinedAt: now, updatedAt: now }],
     ["set", `users/${uid}/rooms/${rid}`, { name, joinedAt: now }]
   ]);
-  setActive(rid);
+  setActive(rid); rewatch(rid);
   const all = await db().list(`rooms/${rid}/members`).catch(() => []);
   if (all.length > MAX_MEMBERS) {                                   // ห้องเต็ม → ถอยออก
     await leaveRoom(rid).catch(() => {});
