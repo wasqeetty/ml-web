@@ -20,13 +20,14 @@ service cloud.firestore {
         && shortText(d, 'title', 200)
         && shortText(d, 'topicTitle', 200)
         && shortText(d, 'name', 60)
-        && shortText(d, 'subjectId', 100);
+        && shortText(d, 'subjectId', 100)
+        && shortText(d, 'fish', 30);
     }
     // โปรไฟล์ที่กรอกตอนสมัคร
     function okProfile(p) {
       return p is map
         && p.keys().hasOnly(['realName', 'nickname', 'age', 'favSubject', 'interests', 'photoURL', 'createdAt', 'updatedAt',
-                             'bio', 'cover', 'accent', 'shared'])
+                             'bio', 'cover', 'accent', 'shared', 'river'])
         && p.realName is string && p.realName.size() <= 80
         && p.nickname is string && p.nickname.size() <= 40
         && p.age is int && p.age >= 5 && p.age <= 100
@@ -35,7 +36,9 @@ service cloud.firestore {
         && shortText(p, 'photoURL', 500)
         && shortText(p, 'bio', 160)
         && shortText(p, 'cover', 20)
-        && shortText(p, 'accent', 20);
+        && shortText(p, 'accent', 20)
+        && (!('river' in p) || (p.river is map && p.river.keys().hasOnly(['season', 'fish'])
+            && shortText(p.river, 'season', 20) && p.river.fish is list && p.river.fish.size() <= 8));
     }
 
     // 3) การ์ดโปรไฟล์ที่เจ้าของเปิดแชร์: คนที่ล็อกอินแล้วอ่านได้ เขียนได้เฉพาะเจ้าของ
@@ -44,7 +47,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow delete: if isMe(uid);
       allow create, update: if isMe(uid)
-        && request.resource.data.keys().hasOnly(['nickname', 'photoURL', 'bio', 'cover', 'accent', 'favSubject', 'interests', 'stats', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['nickname', 'photoURL', 'bio', 'cover', 'accent', 'favSubject', 'interests', 'stats', 'river', 'updatedAt'])
         && request.resource.data.nickname is string && request.resource.data.nickname.size() <= 40
         && shortText(request.resource.data, 'photoURL', 500)
         && shortText(request.resource.data, 'bio', 160)

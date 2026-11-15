@@ -77,7 +77,8 @@ $("tSubj").addEventListener("change", e => { A.pref.subjectId = e.target.value; 
 /* ---------- actions ---------- */
 function start(demo) {
   unlockAudio();
-  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, demo: !!demo, phases: planOf(cfg()), season: pickSeason(),
+  const plan = planOf(cfg()), luck = A.fishLuck(focusTotal(plan), A.streak(A.byDay()));
+  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, demo: !!demo, phases: plan, season: pickSeason(), fish: A.pickFish(luck),
         subjectId: $("tSubj").value || "", topicTitle: $("tFree").value.trim().slice(0, 120) };
   saveT(); onStatus();
 }
@@ -151,6 +152,7 @@ function onStatus() {
       const S = SEASONS[T.season];
       $("lfSeason").textContent = S ? `แม่น้ำรอบนี้ได้${S.name}${S.rare ? " ซึ่งออกยากมาก" : ""}` : "";
       $("lfSeason").classList.toggle("rare", !!(S && S.rare));
+      showCatch();
     }
   } else lf.hidden = true;
   $("focus").classList.toggle("done", T.status === "logging");
@@ -158,6 +160,33 @@ function onStatus() {
   renderPick();
   layout();
   if (A.onTimer) A.onTimer();
+}
+
+/* การ์ดจบรอบ: ปลาที่ได้ (ขยับหางวนไปเรื่อยๆ ตอนการ์ดเปิดอยู่) */
+let catchRaf = 0;
+function showCatch() {
+  const box = $("lfFish"), f = A.fish(T.fish);
+  cancelAnimationFrame(catchRaf); box.textContent = "";
+  if (!f) { box.hidden = true; return; }
+  const R = A.RARITY[f.rarity], had = A.list("sessions").filter(s => s.fish === f.id).length;
+  const c = A.el("canvas", { class: "lf-fish-cv", width: 280, height: 140, role: "img", "aria-label": `ภาพ${f.name}` });
+  box.style.setProperty("--rc", R.color);
+  box.append(c, A.el("div", { class: "lf-fish-tx" },
+    A.el("span", { class: "rar r-" + f.rarity, text: R.name }),
+    A.el("b", { text: f.name }),
+    A.el("span", { class: "muted sm", text: T.demo ? "รอบทดลอง ปลาตัวนี้จะไม่ถูกเก็บ" : had ? `ตัวที่ ${had + 1} ในคอลเลกชัน` : "ตัวแรก! เพิ่มเข้าคอลเลกชันแล้ว" }),
+    A.el("span", { class: "lf-fish-desc", text: f.desc })));
+  box.hidden = false;
+  const g = c.getContext("2d"), t0 = performance.now();
+  (function tick(now) {
+    if ($("logform").hidden || !c.isConnected) return;
+    const t = (now - t0) / 1000;
+    g.clearRect(0, 0, 280, 140);
+    const gr = g.createRadialGradient(140, 70, 0, 140, 70, 120); gr.addColorStop(0, R.color + "55"); gr.addColorStop(1, R.color + "00");
+    g.fillStyle = gr; g.fillRect(0, 0, 280, 140);
+    A.drawFish(g, f.id, 150, 72 + Math.sin(t * 1.4) * 4, 110 * Math.min(1.15, f.size), t, { dir: 1 });
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) catchRaf = requestAnimationFrame(tick);
+  })(t0);
 }
 
 /* หน้าพร้อมเรียน (แม่น้ำในวงกลม) ↔ โหมดโฟกัสเต็มจอ — ย้าย canvas ตัวเดียวไปมา */
@@ -226,7 +255,7 @@ function updateLive(now, p) {
   else if (p < .25) msg = "น้ำยังขุ่น ไม่มีสิ่งมีชีวิตเลย ตั้งใจเรียนต่อ";
   else if (p < .5) msg = "สารหนูเริ่มลดลง น้ำค่อยๆ ใสขึ้น";
   else if (p < .55) msg = "หญ้ากับต้นไม้ริมตลิ่งเริ่มกลับมา";
-  else if (p < .8) msg = "บรรยากาศรอบแม่น้ำเริ่มเปลี่ยน ลุ้นว่ารอบนี้จะได้ฤดูไหน";
+  else if (p < .8) msg = "มีเงาปลาว่ายเข้ามา บรรยากาศรอบแม่น้ำเริ่มเปลี่ยน ลุ้นว่าจะได้ปลาอะไร ฤดูไหน";
   else msg = "ผ่านเกณฑ์ WHO แล้ว เรียนให้จบรอบเพื่อให้แม่น้ำใสเต็มที่";
   setText("status", msg);
 }
@@ -241,7 +270,7 @@ $("logF").addEventListener("submit", async e => {
     subjectId: T.subjectId || "", topicTitle: T.topicTitle || "",
     note: $("lfNote").value.trim().slice(0, 2000),
     rating: Number((document.querySelector('input[name="rate"]:checked') || {}).value || 3),
-    focusMin: focusTotal(PH()), riverImg: T.img || "", season: T.season || ""
+    focusMin: focusTotal(PH()), riverImg: T.img || "", season: T.season || "", fish: T.fish || ""
   };
   const id = `s-${rec.date}-${pad(fin.getHours())}${pad(fin.getMinutes())}${pad(fin.getSeconds())}`;
   try {
@@ -383,6 +412,7 @@ function draw(p, flowT, life) {
     cx.fillStyle = "rgba(20,30,30,.8)"; cx.beginPath(); cx.arc(4, -0.8, 0.9, 0, Math.PI * 2); cx.fill();
     cx.restore();
   });
+  drawFeatured(p, life);
   const spA = smooth(0.95, 1, p);
   if (spA > 0) {
     cx.strokeStyle = "#fff"; cx.lineWidth = 1.2;
@@ -420,6 +450,25 @@ function draw(p, flowT, life) {
       cx.beginPath(); cx.moveTo(x - 7, y - 2 - f); cx.quadraticCurveTo(x - 3, y - 3, x, y); cx.quadraticCurveTo(x + 3, y - 3, x + 7, y - 2 - f); cx.stroke(); });
   }
   drawSeasonFx(S, k, life);
+}
+
+function drawFeatured(p, life) {
+  if (T.status === "idle" || !A.fish(T.fish)) return;
+  const show = smooth(0.5, 0.6, p), col = smooth(0.8, 0.98, p);
+  if (show <= 0) return;
+  const f = A.fish(T.fish), R = A.RARITY[f.rarity];
+  const L = Math.max(22, Math.min(W, H) * 0.09) * f.size;
+  const span = W + L * 4, x = mod(W * 0.62 - life * 16, span) - L * 2;   // ว่ายทวนน้ำช้าๆ เริ่มกลางจอ
+  const y = ry(x) + Math.sin(life * 0.7) * hw(x) * 0.35;
+  cx.save(); cx.translate(x, y); cx.rotate(Math.atan2(ry(x + 4) - ry(x), 4));
+  if (col > 0 && R.rank >= 2) {
+    const gr = cx.createRadialGradient(0, 0, 0, 0, 0, L * 1.1);
+    gr.addColorStop(0, R.color + "66"); gr.addColorStop(1, R.color + "00");
+    cx.globalAlpha = show * col; cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, L * 1.1, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+  }
+  if (col < 1) A.drawFish(cx, f.id, 0, 0, L, life, { dir: -1, alpha: show * (1 - col) * 0.55, silhouette: "rgb(20,30,40)" });
+  if (col > 0) A.drawFish(cx, f.id, 0, 0, L, life, { dir: -1, alpha: show * col });
+  cx.restore();
 }
 
 function flowSpeed() {

@@ -686,3 +686,44 @@ html.gated .scrim{background:radial-gradient(90% 70% at 50% 40%,rgba(8,10,16,.25
 .pp-share input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--acc)}
 .pp-share label{display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:.9rem}
 .pv-msg{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:60px 16px;color:var(--muted)}
+
+/* ---------- ปลา: ป้ายระดับความหายาก ---------- */
+.rar{display:inline-flex;align-items:center;gap:5px;width:max-content;font-size:.7rem;font-weight:600;padding:1px 9px;border-radius:999px;border:1px solid currentColor;line-height:1.5}
+.rar::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.r-common{color:#A9B4C2}.r-uncommon{color:#9AD36A}.r-rare{color:#62B4FF}.r-epic{color:#C79BFF}.r-legendary{color:#F5C25B}
+
+/* การ์ดจบรอบ: ปลาที่ได้ */
+.lf-fish{display:flex;align-items:center;gap:14px;margin:6px 0 4px;padding:10px 14px 10px 6px;border-radius:16px;
+  background:linear-gradient(120deg,color-mix(in srgb,var(--rc,#62B4FF) 16%,transparent),rgba(255,255,255,.03));border:1px solid color-mix(in srgb,var(--rc,#62B4FF) 45%,transparent)}
+.lf-fish-cv{width:140px;height:70px;flex:none}
+.lf-fish-tx{display:flex;flex-direction:column;gap:3px;min-width:0;text-align:left}
+.lf-fish-tx b{font-family:var(--f-display);font-weight:500;font-size:1.25rem;color:#fff}
+.lf-fish-desc{font-size:.78rem;color:rgba(255,255,255,.7);line-height:1.4}
+@media (max-width:480px){.lf-fish{flex-direction:column;text-align:center;padding:10px}.lf-fish-tx{align-items:center;text-align:center}}
+
+/* ---------- โปรไฟล์: แม่น้ำของตัวเอง ---------- */
+.pv-cover{height:clamp(220px,30vw,300px);background:#0F2A44;isolation:isolate}
+.pv-head{z-index:3}
+.pv-river{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pv-waves{z-index:1;pointer-events:none}
+.pv-waves .w0{fill:rgba(255,255,255,.08)}
+.pv-tools{z-index:2}
+.pv-wide{grid-column:1/-1;min-width:0}
+.pv-wide>.pv-card{height:100%}
+
+/* คอลเลกชันปลา */
+.pv-fish{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px}
+.fi{display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center;padding:8px 6px 10px;border-radius:14px;background:var(--panel2);border:1px solid transparent}
+.fi canvas{width:100%;max-width:140px;height:auto;aspect-ratio:16/9}
+.fi.on{border-color:color-mix(in srgb,var(--rc) 35%,transparent)}
+.fi-name{font-size:.84rem}
+.fi:not(.on) .fi-name{color:var(--dim);letter-spacing:.2em}
+.fi:not(.on) .rar{opacity:.55}
+.fi-n{font-size:.72rem;color:var(--muted)}
+
+/* แผงปรับแต่ง: ฤดู + ปลา */
+.pv-cv.locked label{color:var(--dim);cursor:not-allowed}
+.pv-cv.locked .cv-thumb{filter:grayscale(1) brightness(.55)}
+.pv-pick-fish{display:flex;flex-wrap:wrap;gap:8px}
+.pv-pick-fish .rdot{width:8px;height:8px;border-radius:50%;background:var(--rc);flex:none}
+.pv-pick-fish input:disabled+label{opacity:.4;cursor:not-allowed}
