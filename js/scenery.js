@@ -87,7 +87,10 @@ function build() {
   W = Math.max(1, r.width); H = Math.max(1, r.height);
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   const now = new Date(); hour = now.getHours() + now.getMinutes() / 60;
-  let sk = seasonOf(dayKey(now));
+  // สุ่มฤดูใหม่ทุกชั่วโมง (ทุกเครื่องได้ฤดูเดียวกันในชั่วโมงเดียวกัน) และไม่ให้ซ้ำกับชั่วโมงก่อน
+  const hk = d => `${dayKey(d)}|${d.getHours()}`;
+  let sk = seasonOf(hk(now));
+  if (sk === seasonOf(hk(new Date(now.getTime() - 3600e3)))) sk = ORDER[(ORDER.indexOf(sk) + 1) % ORDER.length];
   // ช่องทดสอบ: localStorage "mlweb.sceneTest" = {"season":"winter","hour":22}
   try { const ov = JSON.parse(localStorage.getItem("mlweb.sceneTest") || "null"); if (ov) { if (SEASONS[ov.season]) sk = ov.season; if (ov.hour != null) hour = +ov.hour; } } catch (e) {}
   SZ = SEASONS[sk]; L = lightAt(hour);

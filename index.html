@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Noto+Serif+Thai:wght@300;400;500&family=JetBrains+Mono:wght@500&display=swap">
-<link rel="stylesheet" href="css/style.css?v=r11151620">
+<link rel="stylesheet" href="css/style.css?v=r11151625">
 </head>
 <body>
 
@@ -155,7 +155,6 @@
     <div class="ready-go">
       <p class="ready-time" id="readyTime">25:00</p>
       <button type="button" class="cta" id="bStart"><span>กดเพื่อเริ่มเรียน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l9 6-9 6z"/></svg></i></button>
-      <button type="button" class="link-btn quiet" id="bDemo">ทดลองแบบเร่งเวลา (ไม่บันทึกผล)</button>
     </div>
   </div>
 </section>
@@ -308,13 +307,13 @@
   <section class="done-card" id="logform" hidden aria-labelledby="doneH">
     <h2 class="display sm" id="doneH">แม่น้ำใสแล้ว</h2>
     <p class="season-tag" id="lfSeason"></p>
+    <div class="lf-fish" id="lfFish" hidden></div>
     <form id="logF">
       <figure class="lf-shot">
         <img id="lfImg" alt="ภาพแม่น้ำตอนเรียนจบรอบนี้" hidden>
         <div id="lfImgWait" class="river-ph"><p>กำลังถ่ายภาพแม่น้ำ…</p></div>
       </figure>
       <p class="lf-topic"><b id="lfTopic"></b></p>
-      <p class="lf-demo" id="lfDemo" hidden>รอบนี้เป็นรอบทดลองแบบเร่งเวลา กดบันทึกแล้วจะไม่ถูกเก็บ</p>
       <div class="field"><label for="lfNote">สรุปสั้นๆ ว่าได้อะไร</label>
         <textarea id="lfNote" rows="3" placeholder="1–3 บรรทัดก็พอ"></textarea></div>
       <fieldset>
@@ -397,13 +396,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>window.__errs=[];addEventListener("error",function(e){__errs.push((e.message||"error")+" ("+String(e.filename||"").split("/").pop().split("?")[0]+":"+e.lineno+")")});</script>
-<script src="js/config.js?v=r11151620"></script>
-<script src="js/scenery.js?v=r11151620"></script>
-<script src="js/data.js?v=r11151620"></script>
-<script src="js/river.js?v=r11151620"></script>
-<script src="js/pages.js?v=r11151620"></script>
-<script src="js/profile.js?v=r11151620"></script>
-<script src="js/auth.js?v=r11151620"></script>
-<script src="js/app.js?v=r11151620"></script>
+<script src="js/config.js?v=r11151625"></script>
+<script src="js/scenery.js?v=r11151625"></script>
+<script src="js/data.js?v=r11151625"></script>
+<script src="js/fish.js?v=r11151625"></script>
+<script src="js/river.js?v=r11151625"></script>
+<script src="js/pages.js?v=r11151625"></script>
+<script src="js/aquarium.js?v=r11151625"></script>
+<script src="js/profile.js?v=r11151625"></script>
+<script src="js/auth.js?v=r11151625"></script>
+<script src="js/app.js?v=r11151625"></script>
 </body>
 </html>
