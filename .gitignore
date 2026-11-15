@@ -1,0 +1,9 @@
+# ไฟล์ส่วนตัว/ไฟล์ใหญ่ที่ไม่ต้องขึ้น GitHub
+media/
+m1.png
+m2.png
+m3.png
+m4.png
+desktop.ini
+backup/
+*.local.*

@@ -1,0 +1,17 @@
+rules_version = '2';
+// ML WEB — ใครล็อกอินแล้วอ่าน/เขียนได้เฉพาะข้อมูลของตัวเองที่ users/<uid> เท่านั้น
+// (โปรไฟล์อยู่ที่ users/<uid> ฟิลด์ profile, ข้อมูลอื่นอยู่ใต้ users/<uid>/sessions, tasks, slots, subjects, settings)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /{col}/{docId} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if request.auth != null && request.auth.uid == uid
+          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings']
+          && request.resource.size() < 200000;
+      }
+    }
+  }
+}

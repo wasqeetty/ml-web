@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0C0C10">
+<title>ML WEB</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230C0C10'/%3E%3Cpath d='M5 12c3.5 0 3.5-3 7-3s3.5 3 7 3 3.5-3 7-3M5 18c3.5 0 3.5-3 7-3s3.5 3 7 3 3.5-3 7-3M5 24c3.5 0 3.5-3 7-3s3.5 3 7 3 3.5-3 7-3' fill='none' stroke='%23F08A4B' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500&family=Noto+Serif+Thai:wght@300;400;500&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="scenery" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+
+<header class="bar">
+  <div class="bar-in">
+    <a class="brand" href="#home" aria-label="ML WEB หน้าหลัก">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 12c4 0 4-4 8.5-4S16 12 20.5 12 25 8 29 8" /><path d="M3 20c4 0 4-4 8.5-4S16 20 20.5 20 25 16 29 16" /><path d="M3 28c4 0 4-4 8.5-4S16 28 20.5 28 25 24 29 24" /></svg>
+      <span>ML WEB</span>
+    </a>
+    <button type="button" class="streak" id="streakBtn" aria-label="เรียนติดกัน 0 วัน">
+      <svg viewBox="0 0 24 30" aria-hidden="true">
+        <defs><clipPath id="dropClip"><path d="M12 1.5C12 1.5 2.5 12.5 2.5 19a9.5 9.5 0 0 0 19 0C21.5 12.5 12 1.5 12 1.5z"/></clipPath></defs>
+        <rect id="streakFill" class="s-fill" x="0" y="30" width="24" height="30" clip-path="url(#dropClip)"/>
+        <path class="s-shell" d="M12 1.5C12 1.5 2.5 12.5 2.5 19a9.5 9.5 0 0 0 19 0C21.5 12.5 12 1.5 12 1.5z"/>
+        <path class="s-shine" d="M7.5 18.5a5 5 0 0 1 2.5-4.2"/>
+      </svg>
+      <b id="streakN">0</b>
+    </button>
+    <nav class="tabs" aria-label="เมนูหลัก">
+      <a href="#home" data-nav="home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><span>หน้าหลัก</span></a>
+      <a href="#timer" data-nav="timer"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg><span>จับเวลา</span></a>
+      <a href="#log" data-nav="log"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5a2 2 0 0 1 2-2h12v15H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 0 2 1h12v-3M9 7h6"/></svg><span>บันทึก</span></a>
+      <a href="#plan" data-nav="plan"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 10h18M9 4v17M15 4v17"/></svg><span>ตารางเรียน</span></a>
+      <a href="#tasks" data-nav="tasks"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5L7.5 11M3.5 18l1.5 1.5L7.5 17"/></svg><span>งาน</span></a>
+      <a href="#calendar" data-nav="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>ปฏิทิน</span></a>
+    </nav>
+    <div class="acct" id="acct" hidden>
+      <button type="button" class="acct-btn" id="acctBtn" aria-expanded="false" aria-controls="acctMenu" aria-label="บัญชีของฉัน">
+        <img id="acctImg" alt="" referrerpolicy="no-referrer" hidden><span id="acctInit" aria-hidden="true"></span>
+      </button>
+      <div class="acct-menu" id="acctMenu" hidden>
+        <div class="acct-who"><b id="acctName"></b><span id="acctMail"></span></div>
+        <button type="button" class="menu-item" id="acctEdit">แก้ไขโปรไฟล์</button>
+        <label class="menu-item" for="acctImport">นำเข้าข้อมูลจากเวอร์ชันเก่า (.json)</label>
+        <input type="file" id="acctImport" accept=".json,application/json" class="vh">
+        <button type="button" class="menu-item danger" id="acctOut">ออกจากระบบ</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============ HOME (m1) ============ -->
+<section class="page" data-page="home" hidden>
+  <div class="home-hero">
+    <p class="eyebrow" id="hDate"></p>
+    <h1 class="display" id="hHello" tabindex="-1">เรียนวันละนิด<br>ให้แม่น้ำใสขึ้นทุกวัน</h1>
+    <p class="hero-sub" id="hSub"></p>
+    <button type="button" class="cta light" id="hStart"><span id="hStartTxt">เริ่มเรียน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></i></button>
+  </div>
+
+  <nav class="drops" aria-label="ไปยังส่วนต่างๆ">
+    <a class="drop main" href="#timer">
+      <span class="bead"><svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="26" r="14"/><path d="M24 18v8l5 4M19 7h10"/></svg></span>
+      <span class="d-name">จับเวลา</span><span class="d-note" id="fTimerK"></span>
+    </a>
+    <a class="drop" href="#log">
+      <span class="bead photo"><img id="fLogImg" alt="" hidden><svg id="fLogArt" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 20c5 0 5-4 10-4s5 4 10 4 5-4 10-4 5 4 2 4M8 30c5 0 5-4 10-4s5 4 10 4 5-4 10-4 5 4 2 4"/></svg></span>
+      <span class="d-name">บันทึก</span><span class="d-note" id="fLogK"></span>
+    </a>
+    <a class="drop" href="#calendar">
+      <span class="bead"><svg viewBox="0 0 48 48" aria-hidden="true"><rect x="10" y="12" width="28" height="26" rx="5"/><path d="M10 20h28M18 8v7M30 8v7"/><circle cx="30" cy="30" r="2.4" class="dotfill"/></svg></span>
+      <span class="d-name">ปฏิทิน</span><span class="d-note" id="fCalK"></span>
+    </a>
+    <a class="drop" href="#plan">
+      <span class="bead"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 15h16M12 24h24M12 33h12"/><circle cx="34" cy="15" r="2.4" class="dotfill"/></svg></span>
+      <span class="d-name">ตารางเรียน</span><span class="d-note" id="fPlanK"></span>
+    </a>
+    <a class="drop" href="#tasks">
+      <span class="bead"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M13 16l3 3 6-6M13 30l3 3 6-6M27 17h9M27 31h9"/></svg></span>
+      <span class="d-name">งาน</span><span class="d-note" id="fTaskK"></span>
+    </a>
+  </nav>
+
+<div class="mini-stats">
+    <span><b id="sWeek">0</b> ชม. สัปดาห์นี้</span>
+    <span><b id="sTotal">0</b> ชม. ทั้งหมด</span>
+    <button type="button" class="link-btn" id="goalEdit">ตั้งเป้ารอบต่อวัน</button>
+  </div>
+  <form id="goalF" class="panel goal-form" hidden>
+    <label for="gRounds">เป้าหมาย (รอบต่อวัน)</label><input type="number" id="gRounds" min="1" max="6" inputmode="numeric">
+    <div class="actions"><button class="btn primary sm" type="submit">บันทึก</button><button class="btn sm" type="button" id="goalCancel">ยกเลิก</button></div>
+  </form>
+
+  <div class="wave-div" aria-hidden="true"><svg viewBox="0 0 240 14" preserveAspectRatio="none"><path d="M0 7c15 0 15-5 30-5s15 5 30 5 15-5 30-5 15 5 30 5 15-5 30-5 15 5 30 5 15-5 30-5 15 5 30 5"/></svg></div>
+
+  <div class="home-grid">
+    <article class="glass pend" aria-labelledby="pendH">
+      <div class="card-head">
+        <div><p class="eyebrow">ต้องทำต่อ</p><h2 id="pendH">งานที่ยังค้างอยู่</h2></div>
+        <a class="link-btn" href="#tasks">ดูทั้งหมด</a>
+      </div>
+      <div class="pend-sum" id="pendSum"></div>
+      <ul class="rows" id="pendList"></ul>
+    </article>
+    <article class="glass wk" aria-labelledby="wkH">
+      <div class="card-head">
+        <div><p class="eyebrow">สัปดาห์นี้</p><h2 id="wkH">หยดน้ำรายวัน</h2></div>
+        <span class="muted sm" id="wkNote"></span>
+      </div>
+      <ol class="wk-drops" id="wkDrops"></ol>
+      <p class="wk-quote" id="wkQuote"></p>
+    </article>
+  </div>
+</section>
+
+<!-- ============ TIMER: ready screen (m2) ============ -->
+<section class="page" data-page="timer" hidden>
+  <h1 class="vh" tabindex="-1">จับเวลา</h1>
+  <div class="ready">
+    <div class="ol ol-tl">
+      <h3 class="c-violet">วิชา</h3>
+      <label for="tSubj" class="vh">เลือกวิชา</label><select id="tSubj" class="bare"></select>
+    </div>
+    <div class="ol ol-tr">
+      <h3 class="c-mint">เรียนเรื่องอะไร</h3>
+      <label for="tFree" class="vh">เรียนเรื่องอะไร (ไม่บังคับ)</label><input type="text" id="tFree" class="bare" maxlength="120" placeholder="พิมพ์หัวข้อ (ไม่บังคับ)">
+    </div>
+    <div class="orbit">
+      <div class="orbit-ring r1"></div><div class="orbit-ring r2"></div>
+      <span class="planet pl1"></span><span class="planet pl2"></span><span class="planet pl3"></span><span class="planet pl4"></span>
+      <div class="port" id="port"><canvas id="river" role="img" aria-label="ภาพแม่น้ำที่ค่อยๆ ใสขึ้นตามเวลาที่ตั้งใจเรียน"></canvas></div>
+    </div>
+    <div class="ol ol-bl">
+      <h3 class="c-blue">ตั้งเวลา</h3>
+      <div class="presets" id="presets" role="group" aria-label="เวลาสำเร็จรูป"></div>
+      <div class="tset">
+        <label for="cfFocus">โฟกัส</label><input type="number" id="cfFocus" min="1" max="180" inputmode="numeric"><span>นาที</span>
+        <label for="cfBreak">พัก</label><input type="number" id="cfBreak" min="0" max="60" inputmode="numeric"><span>นาที</span>
+        <label for="cfBlocks">จำนวนช่วง</label><input type="number" id="cfBlocks" min="1" max="6" inputmode="numeric"><span>ช่วง</span>
+      </div>
+      <p id="cfTotal"></p>
+    </div>
+    <div class="ol ol-br">
+      <h3 class="c-amber">แม่น้ำตอนนี้</h3>
+      <p>สารหนู 50 µg/L เกินเกณฑ์ WHO 5 เท่า ยิ่งตั้งใจเรียน น้ำยิ่งใส<br>พอน้ำใสจะได้ฤดูแบบสุ่ม: ใบไม้ผลิ ร้อน ใบไม้ร่วง หนาว ฝน หรือคืนหิ่งห้อยที่ออกยาก</p>
+    </div>
+    <div class="ready-go">
+      <p class="ready-time" id="readyTime">25:00</p>
+      <button type="button" class="cta" id="bStart"><span>กดเพื่อเริ่มเรียน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6l9 6-9 6z"/></svg></i></button>
+      <button type="button" class="link-btn quiet" id="bDemo">ทดลองแบบเร่งเวลา (ไม่บันทึกผล)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LOG ============ -->
+<section class="page" data-page="log" hidden>
+  <div class="page-head">
+    <div><p class="eyebrow">บันทึก</p><h1 class="display sm" tabindex="-1">แม่น้ำที่เราบำบัดมาแล้ว</h1></div>
+    <div class="head-tools"><span class="muted" id="logSum"></span><label for="logFilter" class="vh">กรองตามวิชา</label><select id="logFilter"></select></div>
+  </div>
+  <article class="panel chart-card" aria-labelledby="chartH">
+    <div class="stat-row" id="logStats"></div>
+    <div class="card-head chart-head">
+      <div><h2 id="chartH">เวลาเรียนต่อวัน</h2><p class="chart-note" id="chartNote"></p></div>
+      <div class="chart-tools">
+        <div class="seg" id="chMetric" role="group" aria-label="ข้อมูลในกราฟ">
+          <button type="button" data-v="mins">เวลาต่อวัน</button><button type="button" data-v="days">วันที่เรียนสะสม</button>
+        </div>
+        <div class="seg" id="chRange" role="group" aria-label="ช่วงเวลา">
+          <button type="button" data-v="14">14 วัน</button><button type="button" data-v="30">30 วัน</button><button type="button" data-v="all">ทั้งหมด</button>
+        </div>
+      </div>
+    </div>
+    <div class="chart" id="chart"></div>
+    <details class="chart-table"><summary>ดูเป็นตาราง</summary><div id="chartTable"></div></details>
+  </article>
+  <div class="log-grid" id="logGrid"></div>
+</section>
+
+<!-- ============ PLAN ============ -->
+<section class="page" data-page="plan" hidden>
+  <div class="page-head">
+    <div><p class="eyebrow">ตารางเรียน</p><h1 class="display sm" tabindex="-1">ตารางเรียนประจำสัปดาห์</h1></div>
+    <div class="head-tools"><button type="button" class="cta sm" id="slotToggle" aria-expanded="false" aria-controls="slotF"><span>เพิ่มคาบเรียน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></i></button></div>
+  </div>
+  <form id="slotF" class="panel form-grid" aria-label="เพิ่มคาบเรียน" hidden>
+    <div class="field"><label for="slDay">วัน</label>
+      <select id="slDay"><option value="0">จันทร์</option><option value="1">อังคาร</option><option value="2">พุธ</option><option value="3">พฤหัสบดี</option><option value="4">ศุกร์</option><option value="5">เสาร์</option><option value="6">อาทิตย์</option></select></div>
+    <div class="field"><label for="slStart">เริ่ม</label><input type="time" id="slStart" value="19:00" required></div>
+    <div class="field"><label for="slEnd">จบ</label><input type="time" id="slEnd" value="20:00" required></div>
+    <div class="field"><label for="slSubj">วิชา</label><select id="slSubj"></select></div>
+    <div class="field grow"><label for="slNote">โน้ต (ไม่บังคับ)</label><input type="text" id="slNote" maxlength="80" placeholder="เช่น ทบทวนก่อนสอบ"></div>
+    <div class="field end"><button class="btn primary" type="submit">เพิ่ม</button></div>
+    <p class="err span-all" id="slErr" role="alert"></p>
+  </form>
+  <div class="week" id="week"></div>
+  <details class="panel subj-panel">
+    <summary><span>จัดการวิชา</span><span class="muted sm">เพิ่ม ลบ และเลือกสีวิชา</span></summary>
+    <div class="chips" id="subjList"></div>
+    <form id="subjF" class="subj-form" aria-label="เพิ่มวิชา">
+      <div class="field grow"><label for="sbName">ชื่อวิชาใหม่</label><input type="text" id="sbName" maxlength="40" placeholder="เช่น เคมี"></div>
+      <fieldset class="field"><legend>สี</legend>
+        <div class="swatches">
+          <input type="radio" name="sbColor" id="sw0" value="0" checked><label for="sw0" class="c0" title="สี 1"></label>
+          <input type="radio" name="sbColor" id="sw1" value="1"><label for="sw1" class="c1" title="สี 2"></label>
+          <input type="radio" name="sbColor" id="sw2" value="2"><label for="sw2" class="c2" title="สี 3"></label>
+          <input type="radio" name="sbColor" id="sw3" value="3"><label for="sw3" class="c3" title="สี 4"></label>
+          <input type="radio" name="sbColor" id="sw4" value="4"><label for="sw4" class="c4" title="สี 5"></label>
+          <input type="radio" name="sbColor" id="sw5" value="5"><label for="sw5" class="c5" title="สี 6"></label>
+          <input type="radio" name="sbColor" id="sw6" value="6"><label for="sw6" class="c6" title="สี 7"></label>
+          <input type="radio" name="sbColor" id="sw7" value="7"><label for="sw7" class="c7" title="สี 8"></label>
+        </div>
+      </fieldset>
+      <div class="field end"><button class="btn" type="submit">เพิ่มวิชา</button></div>
+    </form>
+  </details>
+</section>
+
+<!-- ============ TASKS ============ -->
+<section class="page" data-page="tasks" hidden>
+  <div class="page-head">
+    <div><p class="eyebrow">งาน</p><h1 class="display sm" tabindex="-1">To-do และ Deadline</h1></div>
+    <div class="head-tools"><button type="button" class="cta sm" id="taskToggle" aria-expanded="false" aria-controls="taskF"><span>เพิ่มงาน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg></i></button></div>
+  </div>
+  <form id="taskF" class="panel form-grid" aria-label="เพิ่มงาน" hidden>
+    <div class="field grow"><label for="tkTitle">ชื่องาน</label><input type="text" id="tkTitle" maxlength="140" placeholder="เช่น ทำแบบฝึกหัดบทที่ 2"></div>
+    <div class="field"><label for="tkKind">ประเภท</label><select id="tkKind"><option value="task">To-do</option><option value="assignment">ส่งงาน</option><option value="exam">สอบ</option></select></div>
+    <div class="field"><label for="tkSubj">วิชา</label><select id="tkSubj"></select></div>
+    <div class="field"><label for="tkDue" id="tkDueLbl">กำหนดเสร็จ (ไม่บังคับ)</label><input type="date" id="tkDue"></div>
+    <div class="field"><label for="tkPrio">ความสำคัญ</label><select id="tkPrio"><option value="mid">ปกติ</option><option value="high">ด่วน</option><option value="low">ไม่รีบ</option></select></div>
+    <div class="field end"><button class="btn primary" type="submit">เพิ่ม</button></div>
+    <p class="err span-all" id="tkErr" role="alert"></p>
+  </form>
+  <div class="two">
+    <article class="panel">
+      <div class="card-head"><h2>Deadline</h2><span class="muted sm" id="dlCount"></span></div>
+      <ul class="rows" id="dlList"></ul>
+    </article>
+    <article class="panel">
+      <div class="card-head"><h2>To-do</h2>
+        <div class="seg" id="todoSeg" role="group" aria-label="ตัวกรอง To-do">
+          <button type="button" data-f="open" aria-pressed="true">ค้างอยู่</button>
+          <button type="button" data-f="today" aria-pressed="false">วันนี้</button>
+          <button type="button" data-f="done" aria-pressed="false">เสร็จแล้ว</button>
+        </div>
+      </div>
+      <ul class="rows" id="todoList"></ul>
+    </article>
+  </div>
+</section>
+
+<!-- ============ CALENDAR ============ -->
+<section class="page" data-page="calendar" hidden>
+  <div class="page-head">
+    <div><p class="eyebrow">ปฏิทิน</p><h1 class="display sm" id="calTitle" tabindex="-1">ปฏิทิน</h1></div>
+    <div class="head-tools">
+      <button type="button" class="round" id="calPrev" aria-label="เดือนก่อน"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button type="button" class="btn sm" id="calToday">วันนี้</button>
+      <button type="button" class="round" id="calNext" aria-label="เดือนถัดไป"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+    </div>
+  </div>
+  <div class="cal-layout">
+    <div>
+      <div class="cal" id="cal"></div>
+      <div class="legend"><i class="m-study"></i><span>เรียน 1 รอบ</span><span class="m-dl">deadline</span><span>สอบ / ส่งงาน</span><i class="m-todo"></i><span>To-do ครบกำหนด</span></div>
+    </div>
+    <aside class="panel" id="calDay" aria-live="polite"></aside>
+  </div>
+</section>
+
+<p class="foot"><span id="storeNote"></span></p>
+</main>
+
+<!-- ============ FOCUS MODE (เต็มจอ: แม่น้ำ + เวลา) ============ -->
+<div class="focus" id="focus" hidden>
+  <div class="stage" id="stage"></div>
+  <div class="veil" aria-hidden="true"></div>
+  <div class="f-top">
+    <div class="f-meta">
+      <span id="fSubj"></span>
+      <span class="f-as" id="gauge"><span id="asV">50.0</span> µg/L <span class="f-bar"><i id="asFill"></i><b class="who" title="เกณฑ์ WHO 10 µg/L"></b></span> <span id="asS"></span></span>
+    </div>
+    <button type="button" class="link-btn quiet" id="bMin">ย่อไว้ก่อน</button>
+  </div>
+  <div class="f-center" id="fCenter">
+    <p class="phase" id="phaseL">โฟกัส</p>
+    <p class="digits" id="digits">25:00</p>
+    <ol class="steps" id="steps" aria-label="ลำดับรอบ"><li>โฟกัส</li><li>พัก</li><li>โฟกัส</li></ol>
+    <p class="status" id="status"></p>
+    <p class="f-end" id="fEnd"></p>
+  </div>
+  <div class="f-ctrl" id="actions"></div>
+
+  <section class="done-card" id="logform" hidden aria-labelledby="doneH">
+    <h2 class="display sm" id="doneH">แม่น้ำใสแล้ว</h2>
+    <p class="season-tag" id="lfSeason"></p>
+    <form id="logF">
+      <figure class="lf-shot">
+        <img id="lfImg" alt="ภาพแม่น้ำตอนเรียนจบรอบนี้" hidden>
+        <div id="lfImgWait" class="river-ph"><p>กำลังถ่ายภาพแม่น้ำ…</p></div>
+      </figure>
+      <p class="lf-topic"><b id="lfTopic"></b></p>
+      <p class="lf-demo" id="lfDemo" hidden>รอบนี้เป็นรอบทดลองแบบเร่งเวลา กดบันทึกแล้วจะไม่ถูกเก็บ</p>
+      <div class="field"><label for="lfNote">สรุปสั้นๆ ว่าได้อะไร</label>
+        <textarea id="lfNote" rows="3" placeholder="1–3 บรรทัดก็พอ"></textarea></div>
+      <fieldset>
+        <legend>เข้าใจแค่ไหน</legend>
+        <div class="rate">
+          <input type="radio" name="rate" id="rate1" value="1"><label for="rate1"><b>1</b><small>งงมาก</small></label>
+          <input type="radio" name="rate" id="rate2" value="2"><label for="rate2"><b>2</b><small>งง</small></label>
+          <input type="radio" name="rate" id="rate3" value="3" checked><label for="rate3"><b>3</b><small>พอได้</small></label>
+          <input type="radio" name="rate" id="rate4" value="4"><label for="rate4"><b>4</b><small>เข้าใจ</small></label>
+          <input type="radio" name="rate" id="rate5" value="5"><label for="rate5"><b>5</b><small>สอนได้</small></label>
+        </div>
+      </fieldset>
+      <div class="actions"><button class="cta" type="submit" id="lfSave"><span>บันทึกรอบนี้</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12l4 4 8-8"/></svg></i></button></div>
+    </form>
+  </section>
+</div>
+
+<!-- ============ ฉลองทุก 5 วันติดกัน ============ -->
+<div class="celebrate" id="celebrate" hidden role="dialog" aria-modal="true" aria-labelledby="celH">
+  <canvas id="celRain" aria-hidden="true"></canvas>
+  <div class="cel-card">
+    <svg class="cel-drop" viewBox="0 0 24 30" aria-hidden="true"><path d="M12 1.5C12 1.5 2.5 12.5 2.5 19a9.5 9.5 0 0 0 19 0C21.5 12.5 12 1.5 12 1.5z"/><path class="s-shine" d="M7.5 18.5a5 5 0 0 1 2.5-4.2"/></svg>
+    <p class="cel-n" id="celN">5</p>
+    <h2 class="display sm" id="celH">วันติดกันแล้ว</h2>
+    <p class="cel-sub" id="celSub">เรียนต่อเนื่องครบ 5 วัน หยดน้ำของคุณเต็มแก้วแล้ว</p>
+    <button type="button" class="cta" id="celOk"><span>เรียนต่อพรุ่งนี้</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 12l4 4 8-8"/></svg></i></button>
+  </div>
+</div>
+
+
+<!-- ============ เข้าสู่ระบบ + แนะนำตัว ============ -->
+<div class="gate" id="gate">
+  <p class="gate-load" id="gLoad" role="status">กำลังโหลด…</p>
+
+  <section class="gate-card" id="gLogin" hidden aria-labelledby="gLoginH">
+    <svg class="gate-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M3 12c4 0 4-4 8.5-4S16 12 20.5 12 25 8 29 8"/><path d="M3 20c4 0 4-4 8.5-4S16 20 20.5 20 25 16 29 16"/><path d="M3 28c4 0 4-4 8.5-4S16 28 20.5 28 25 24 29 24"/></svg>
+    <p class="eyebrow">ML WEB</p>
+    <h1 class="display" id="gLoginH" tabindex="-1">เรียนวันละนิด<br>ให้แม่น้ำใสขึ้นทุกวัน</h1>
+    <p class="gate-sub">เข้าสู่ระบบเพื่อเก็บบันทึกการเรียน งาน และตารางเรียนของคุณเอง เปิดจากเครื่องไหนก็เจอข้อมูลชุดเดียวกัน</p>
+    <button type="button" class="g-btn" id="gGoogle"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg><span>เข้าสู่ระบบด้วย Google</span></button>
+    <p class="err" id="gErr" role="alert"></p>
+    <p class="gate-note" id="gNote">ใช้แค่ชื่อ อีเมล และรูปโปรไฟล์จากบัญชี Google เพื่อแยกข้อมูลของแต่ละคน</p>
+  </section>
+
+  <section class="gate-card wide" id="gProfile" hidden aria-labelledby="gProfH">
+    <ol class="g-steps" id="gSteps" aria-label="ขั้นตอน"><li class="done">เข้าสู่ระบบ</li><li class="cur" aria-current="step">แนะนำตัว</li><li>เริ่มเรียน</li></ol>
+    <div class="g-who">
+      <span class="g-ava"><img id="gAvatar" alt="" referrerpolicy="no-referrer" hidden><span id="gAvaInit" aria-hidden="true"></span></span>
+      <div><p class="eyebrow" id="gHi">สวัสดี</p><h1 class="display sm" id="gProfH" tabindex="-1">แนะนำตัวหน่อย</h1></div>
+    </div>
+    <form id="profF" novalidate>
+      <div class="pf-grid">
+        <div class="field"><label for="pfReal">ชื่อจริง</label><input type="text" id="pfReal" maxlength="80" autocomplete="name" required></div>
+        <div class="field"><label for="pfNick">ชื่อเล่น</label><input type="text" id="pfNick" maxlength="40" autocomplete="nickname" required></div>
+        <div class="field"><label for="pfAge">อายุ</label><input type="number" id="pfAge" min="5" max="100" inputmode="numeric" required></div>
+      </div>
+      <fieldset class="pf-set">
+        <legend>วิชาที่ชอบ <span class="muted">เลือก 1 วิชา หรือพิมพ์เอง</span></legend>
+        <div class="pick" id="pfSubj"></div>
+        <label for="pfSubjOther" class="vh">วิชาอื่น</label><input type="text" id="pfSubjOther" maxlength="40" placeholder="หรือพิมพ์วิชาอื่น เช่น ดาราศาสตร์">
+      </fieldset>
+      <fieldset class="pf-set">
+        <legend>ความสนใจ <span class="muted">เลือกได้หลายอย่าง</span></legend>
+        <div class="pick" id="pfInt"></div>
+        <div class="add-tag"><label for="pfIntNew" class="vh">เพิ่มความสนใจเอง</label><input type="text" id="pfIntNew" maxlength="30" placeholder="เพิ่มเอง เช่น หุ่นยนต์"><button type="button" class="btn sm" id="pfIntAdd">เพิ่ม</button></div>
+      </fieldset>
+      <p class="err" id="pfErr" role="alert"></p>
+      <div class="actions pf-actions">
+        <button class="cta" type="submit" id="pfSave"><span id="pfSaveTxt">เริ่มใช้งาน</span><i class="cta-dot" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></i></button>
+        <button type="button" class="btn" id="pfCancel" hidden>ยกเลิก</button>
+        <button type="button" class="link-btn quiet" id="pfOut">ไม่ใช่บัญชีนี้? ออกจากระบบ</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button type="button" id="toastUndo" hidden>เลิกทำ</button></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="js/config.js"></script>
+<script src="js/scenery.js"></script>
+<script src="js/data.js"></script>
+<script src="js/river.js"></script>
+<script src="js/pages.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
