@@ -9,8 +9,7 @@ service cloud.firestore {
       match /{col}/{docId} {
         allow read, delete: if request.auth != null && request.auth.uid == uid;
         allow create, update: if request.auth != null && request.auth.uid == uid
-          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings']
-          && request.resource.size() < 200000;
+          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings'];
       }
     }
   }
