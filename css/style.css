@@ -1,4 +1,4 @@
-/* ML WEB — single dark theme after the user's templates (m1: glow + serif + sliding gradient cards, m2: calm orbit timer).
+/* สายเรียน (SaiRian) — single dark theme after the user's templates (m1: glow + serif + sliding gradient cards, m2: calm orbit timer).
    Layout: slim top bar → one view per page; timer runs as a full-screen focus layer. */
 :root{
   --bg:#0C0C10; --bg2:#111117; --panel:#15151C; --panel2:#1B1B24; --line:#272733; --line2:#34343F;
@@ -491,6 +491,9 @@ html.gated .scrim{background:radial-gradient(90% 70% at 50% 40%,rgba(8,10,16,.25
   background:linear-gradient(160deg,rgba(22,26,38,.74),rgba(12,14,22,.64));border:1px solid rgba(255,255,255,.13);
   backdrop-filter:blur(18px) saturate(1.2);-webkit-backdrop-filter:blur(18px) saturate(1.2);box-shadow:0 40px 80px -40px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.08);animation:pagein .45s ease both}
 .gate-card.wide{width:min(680px,100%);align-items:stretch;text-align:left;padding:30px 30px 26px}
+/* โลโก้สายเรียน: ไอคอนมาสคอตบนแถบบน + โลโก้เต็มในหน้าล็อกอิน (รูปพื้นขาว จึงวางบนการ์ดขาวขอบมน) */
+.brand-ic{width:32px;height:32px;border-radius:9px;display:block;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.14),0 4px 14px rgba(0,0,0,.35)}
+.gate-logo{display:block;width:min(300px,78%);height:auto;border-radius:22px;background:#fff;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.35);margin-bottom:4px}
 .gate-mark{width:46px;height:46px;fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linecap:round;filter:drop-shadow(0 0 14px rgba(240,138,75,.45))}
 .gate-card .eyebrow{margin:0;letter-spacing:.18em;color:rgba(255,255,255,.62)}
 .gate-card .display{font-size:clamp(1.9rem,1.3rem + 2.4vw,2.6rem)}
