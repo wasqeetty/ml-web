@@ -24,10 +24,11 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 let T = A.lsGet(LS, null) || { status: "idle" };
 if (!["idle", "running", "paused", "logging"].includes(T.status)) T = { status: "idle" };
+if (T.demo) { T = { status: "idle" }; A.lsSet(LS, T); }   // ล้างรอบทดลองที่ค้างจากเวอร์ชันก่อน (เอาโหมดทดลองออกแล้ว)
 const ui = { confirmQuit: false, drain: null };
 let previewP = 0;
 
-const MIN = () => (T.demo ? 2000 : 60000);          // โหมดเร่งเวลา: 1 นาที = 2 วินาที
+const MIN = () => 60000;
 const phaseMs = i => PH()[i].m * MIN();
 const focusMs = () => focusTotal(PH()) * MIN();
 const elapsed = now => (T.pausedAt ?? now) - T.phaseStart;
@@ -75,10 +76,10 @@ function renderPick() {
 $("tSubj").addEventListener("change", e => { A.pref.subjectId = e.target.value; A.savePref(); });
 
 /* ---------- actions ---------- */
-function start(demo) {
+function start() {
   unlockAudio();
   const plan = planOf(cfg()), luck = A.fishLuck(focusTotal(plan), A.streak(A.byDay()));
-  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, demo: !!demo, phases: plan, season: pickSeason(), fish: A.pickFish(luck),
+  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, phases: plan, season: pickSeason(), fish: A.pickFish(luck),
         subjectId: $("tSubj").value || "", topicTitle: $("tFree").value.trim().slice(0, 120) };
   saveT(); onStatus();
 }
@@ -121,7 +122,7 @@ document.addEventListener("visibilitychange", () => {
   const away = hiddenAt ? Date.now() - hiddenAt : 0; hiddenAt = 0;
   advance(Date.now(), true);
   if (T.status === "running") keepAwake(true);
-  if (away < 60000 || T.demo) return;
+  if (away < 60000) return;
   const m = Math.round(away / 60000);
   if (T.status === "running") A.toast(`ออกไป ${m} นาที เวลายังนับต่อให้ ตอนนี้${PH()[T.phase].k === "break" ? "อยู่ช่วงพัก" : "อยู่ช่วงโฟกัส"}`);
   else if (T.status === "logging") A.toast("ครบรอบแล้วระหว่างที่ออกไป จดบันทึกแล้วกดบันทึกได้เลย");
@@ -148,7 +149,7 @@ function onStatus() {
   const lf = $("logform");
   if (T.status === "logging") {
     if (lf.hidden) {
-      $("lfDemo").hidden = !T.demo; showShot(); lf.hidden = false;
+      showShot(); lf.hidden = false;
       const S = SEASONS[T.season];
       $("lfSeason").textContent = S ? `แม่น้ำรอบนี้ได้${S.name}${S.rare ? " ซึ่งออกยากมาก" : ""}` : "";
       $("lfSeason").classList.toggle("rare", !!(S && S.rare));
@@ -162,21 +163,28 @@ function onStatus() {
   if (A.onTimer) A.onTimer();
 }
 
+/* นับว่าเป็นปลาตัวที่เท่าไหร่ (นับใหม่เมื่อข้อมูลโหลดเสร็จ กันขึ้น "ตัวแรก" ผิดตอนรีเฟรชหน้า) */
+function catchCount() {
+  const n = $("lfFishN"); if (!n || !A.fish(T.fish)) return;
+  if (["loading", "db-cache"].includes(A.store.mode)) { n.textContent = ""; return; }
+  const had = A.list("sessions").filter(s => s.fish === T.fish).length;
+  n.textContent = had ? `ตัวที่ ${had + 1} ในคอลเลกชัน` : "ตัวแรก! เพิ่มเข้าคอลเลกชันแล้ว";
+}
 /* การ์ดจบรอบ: ปลาที่ได้ (ขยับหางวนไปเรื่อยๆ ตอนการ์ดเปิดอยู่) */
 let catchRaf = 0;
 function showCatch() {
   const box = $("lfFish"), f = A.fish(T.fish);
   cancelAnimationFrame(catchRaf); box.textContent = "";
   if (!f) { box.hidden = true; return; }
-  const R = A.RARITY[f.rarity], had = A.list("sessions").filter(s => s.fish === f.id).length;
+  const R = A.RARITY[f.rarity];
   const c = A.el("canvas", { class: "lf-fish-cv", width: 280, height: 140, role: "img", "aria-label": `ภาพ${f.name}` });
   box.style.setProperty("--rc", R.color);
   box.append(c, A.el("div", { class: "lf-fish-tx" },
     A.el("span", { class: "rar r-" + f.rarity, text: R.name }),
     A.el("b", { text: f.name }),
-    A.el("span", { class: "muted sm", text: T.demo ? "รอบทดลอง ปลาตัวนี้จะไม่ถูกเก็บ" : had ? `ตัวที่ ${had + 1} ในคอลเลกชัน` : "ตัวแรก! เพิ่มเข้าคอลเลกชันแล้ว" }),
+    A.el("span", { class: "muted sm", id: "lfFishN" }),
     A.el("span", { class: "lf-fish-desc", text: f.desc })));
-  box.hidden = false;
+  box.hidden = false; catchCount();
   const g = c.getContext("2d"), t0 = performance.now();
   (function tick(now) {
     if ($("logform").hidden || !c.isConnected) return;
@@ -204,7 +212,6 @@ function layout() {
   if (T.status !== "idle") $("fSubj").append(A.chip(T.subjectId), T.topicTitle ? `  ·  ${T.topicTitle}` : "");
 }
 $("bStart").addEventListener("click", () => start(false));
-$("bDemo").addEventListener("click", () => start(true));
 $("bMin").addEventListener("click", () => { location.hash = "home"; });
 
 const live = {};
@@ -219,7 +226,6 @@ function updateLive(now, p) {
   if (T.status === "idle") label = ui.drain ? "แม่น้ำกำลังขุ่นกลับ" : "พร้อมเริ่ม";
   else if (T.status === "logging") label = "เสร็จแล้ว";
   else label = T.status === "paused" ? "หยุดชั่วคราว" : PH()[T.phase].k === "break" ? "พักสายตา" : `โฟกัสช่วง ${PH().slice(0, T.phase + 1).filter(p => p.k === "focus").length}/${PH().filter(p => p.k === "focus").length}`;
-  if (T.demo && T.status !== "idle") label += " · เร่งเวลา";
   const s = Math.ceil(remainingMs(now) / (T.status === "idle" ? 1000 : MIN() / 60));
   setText("digits", `${pad(Math.floor(s / 60))}:${pad(s % 60)}`);
   setText("phaseL", label);
@@ -274,8 +280,7 @@ $("logF").addEventListener("submit", async e => {
   };
   const id = `s-${rec.date}-${pad(fin.getHours())}${pad(fin.getMinutes())}${pad(fin.getSeconds())}`;
   try {
-    if (T.demo) A.toast("รอบทดลอง ไม่ได้บันทึกจริง");
-    else { await A.put("sessions", id, rec); A.toast("บันทึกแล้ว วันนี้ขึ้นในปฏิทินแล้ว"); }
+    await A.put("sessions", id, rec); A.toast("บันทึกแล้ว วันนี้ขึ้นในปฏิทินแล้ว");
     T = { status: "idle" }; saveT();
     $("lfNote").value = ""; $("tFree").value = ""; $("rate3").checked = true;
     onStatus();
@@ -560,9 +565,9 @@ A.Timer = {
   info() {
     const now = Date.now();
     return { status: T.status, phase: T.status === "running" || T.status === "paused" ? PH()[T.phase].k : null,
-             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle, demo: !!T.demo };
+             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle };
   },
-  refresh() { renderPick(); renderCfg(); layout(); },
+  refresh() { renderPick(); renderCfg(); layout(); catchCount(); },
   layout() { layout(); }
 };
 A.startTimer = () => { advance(Date.now(), false); onStatus(); requestAnimationFrame(loop); };
