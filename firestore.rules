@@ -58,6 +58,66 @@ service cloud.firestore {
         && request.resource.data.stats is map;
     }
 
+    // 4) ห้องเรียน: เห็นข้อมูลกันได้เฉพาะคนที่อยู่ห้องเดียวกัน
+    function signedIn() { return request.auth != null; }
+    function isMember(rid) {
+      return exists(/databases/$(database)/documents/rooms/$(rid)/members/$(request.auth.uid));
+    }
+    function okRoomName(n) { return n is string && n.size() >= 1 && n.size() <= 40; }
+    function okCode(c) { return c is string && c.size() == 6; }
+    function okRoom(d) {
+      return d.keys().hasOnly(['name', 'owner', 'code', 'createdAt']) && okRoomName(d.name) && okCode(d.code) && shortText(d, 'createdAt', 40);
+    }
+    // สรุปการเรียนที่สมาชิกส่งเข้าห้อง (ไม่มีชื่อจริง อายุ อีเมล บันทึก หรือรูปแม่น้ำ)
+    function okMember(d) {
+      return d.keys().hasOnly(['nickname', 'photoURL', 'accent', 'code', 'joinedAt', 'updatedAt', 'daily', 'total', 'rounds',
+                               'streak', 'best', 'lastDate', 'subjects', 'fishN', 'live'])
+        && d.nickname is string && d.nickname.size() <= 40
+        && okCode(d.code)
+        && shortText(d, 'photoURL', 500) && shortText(d, 'accent', 20) && shortText(d, 'lastDate', 10)
+        && shortText(d, 'joinedAt', 40) && shortText(d, 'updatedAt', 40)
+        && (!('daily' in d) || (d.daily is map && d.daily.size() <= 40))
+        && (!('subjects' in d) || (d.subjects is list && d.subjects.size() <= 5))
+        && (!('live' in d) || (d.live is map && d.live.keys().hasOnly(['s', 'ph', 'sub', 'end', 'at'])));
+    }
+
+    match /rooms/{rid} {
+      allow read: if signedIn() && (isMember(rid) || resource.data.owner == request.auth.uid);
+      // สร้างห้องพร้อมรหัสเชิญในคราวเดียว (batch) — รหัสต้องชี้กลับมาที่ห้องนี้
+      allow create: if signedIn() && okRoom(request.resource.data)
+        && request.resource.data.owner == request.auth.uid
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.roomId == rid;
+      allow update: if signedIn() && resource.data.owner == request.auth.uid && okRoom(request.resource.data)
+        && request.resource.data.owner == resource.data.owner
+        && getAfter(/databases/$(database)/documents/invites/$(request.resource.data.code)).data.roomId == rid;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+
+      match /members/{mid} {
+        allow read: if signedIn() && isMember(rid);
+        // เข้าห้องได้เฉพาะคนที่รู้รหัสปัจจุบันของห้อง และเขียนได้แค่ข้อมูลของตัวเอง
+        allow create: if signedIn() && mid == request.auth.uid && okMember(request.resource.data)
+          && getAfter(/databases/$(database)/documents/rooms/$(rid)).data.code == request.resource.data.code;
+        allow update: if signedIn() && mid == request.auth.uid && okMember(request.resource.data)
+          && request.resource.data.code == resource.data.code;
+        // ออกจากห้องเอง หรือเจ้าของห้องเอาออก
+        allow delete: if signedIn() && (mid == request.auth.uid
+          || get(/databases/$(database)/documents/rooms/$(rid)).data.owner == request.auth.uid);
+      }
+    }
+
+    // รหัสเชิญ 6 ตัว → ห้อง: เปิดดูทีละรหัสได้ (ต้องรู้รหัส) แต่ไล่ดูรายการทั้งหมดไม่ได้
+    match /invites/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn() && okCode(code)
+        && request.resource.data.keys().hasOnly(['roomId', 'name', 'owner'])
+        && request.resource.data.owner == request.auth.uid
+        && okRoomName(request.resource.data.name)
+        && getAfter(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.owner == request.auth.uid
+        && getAfter(/databases/$(database)/documents/rooms/$(request.resource.data.roomId)).data.code == code;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow read, delete: if isMe(uid);
       allow create, update: if isMe(uid)
@@ -67,7 +127,7 @@ service cloud.firestore {
       match /{col}/{docId} {
         allow read, delete: if isMe(uid);
         allow create, update: if isMe(uid)
-          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings']
+          && col in ['sessions', 'tasks', 'slots', 'subjects', 'settings', 'rooms']
           && okItem(request.resource.data);
       }
     }

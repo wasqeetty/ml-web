@@ -2,24 +2,31 @@
 (() => {
 "use strict";
 const A = App, $ = A.$;
-const PAGES = ["home", "timer", "log", "plan", "tasks", "calendar", "profile"];
+const PAGES = ["home", "timer", "log", "plan", "tasks", "calendar", "profile", "rooms"];
+// หน้าที่มีพารามิเตอร์: [รูปแบบ, ชื่อหน้า, ส่วนของเว็บที่แสดง]
+const SUB = [
+  [/^u\/([\w-]{1,128})$/, "user", "profile"],
+  [/^r\/([\w-]{1,60})(?:\/([\w-]{1,128}))?$/, "room", "rooms"],
+  [/^join\/([A-Za-z0-9]{6})$/, "join", "rooms"]
+];
 
 function route() {
   const h = location.hash.replace("#", "");
-  const m = /^u\/([\w-]{1,128})$/.exec(h);
-  const page = m ? "user" : PAGES.includes(h) ? h : "home", section = page === "user" ? "profile" : page;
-  const changed = A.page !== page || A.pageParam !== (m ? m[1] : null);
-  A.page = page; A.pageParam = m ? m[1] : null;
+  let page = PAGES.includes(h) ? h : "home", section = page, p1 = null, p2 = null;
+  for (const [re, pg, sec] of SUB) { const m = re.exec(h); if (m) { page = pg; section = sec; p1 = m[1]; p2 = m[2] || null; break; } }
+  const changed = A.page !== page || A.pageParam !== p1 || A.pageParam2 !== p2;
+  A.page = page; A.pageParam = p1; A.pageParam2 = p2;
   document.body.dataset.page = section;
   document.querySelectorAll(".page").forEach(s => { s.hidden = s.dataset.page !== section; });
+  const navKey = PAGES.includes(page) ? page : section;
   document.querySelectorAll("[data-nav]").forEach(a => {
-    if (a.dataset.nav === page) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    if (a.dataset.nav === navKey) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
   });
   render();
   A.Timer.layout();
-  if (changed) { window.scrollTo(0, 0); const h1 = document.querySelector(`.page[data-page="${page}"] h1`); if (h1) h1.focus({ preventScroll: true }); }
+  if (changed) { window.scrollTo(0, 0); const h1 = document.querySelector(`.page[data-page="${section}"] h1`); if (h1) h1.focus({ preventScroll: true }); }
 }
-function render() { const fn = A.pages[A.page]; if (fn) fn(); renderStoreNote(); A.renderStreak(); if (A.syncPublic) A.syncPublic(); }
+function render() { const fn = A.pages[A.page]; if (fn) fn(); renderStoreNote(); A.renderStreak(); if (A.syncPublic) A.syncPublic(); if (A.Rooms) A.Rooms.sync(); }
 
 function renderStoreNote() {
   const m = {
@@ -37,6 +44,7 @@ function renderStoreNote() {
 A.onTimer = () => {
   const s = A.Timer.info().status, nav = document.querySelector('[data-nav="timer"]');
   nav.classList.toggle("live", s === "running" || s === "paused" || s === "logging");
+  if (A.Rooms) A.Rooms.syncSoon();                    // บอกเพื่อนในห้องว่ากำลังเรียน/หยุด
   if (A.page === "home") A.pages.home();
 };
 setInterval(() => { if (A.page === "home") A.pages.home(); }, 30000);

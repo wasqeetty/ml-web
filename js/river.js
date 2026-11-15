@@ -579,7 +579,9 @@ A.Timer = {
   info() {
     const now = Date.now();
     return { status: T.status, phase: T.status === "running" || T.status === "paused" ? PH()[T.phase].k : null,
-             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle };
+             remainMin: Math.ceil(remainingMs(now) / MIN()), subjectId: T.subjectId, topicTitle: T.topicTitle,
+             // เวลาที่ทั้งรอบจะจบ (ใช้บอกเพื่อนในห้องเรียนว่าเหลืออีกกี่นาที) — คิดเฉพาะตอนกำลังเดิน
+             endsAt: T.status === "running" ? T.phaseStart + PH().slice(T.phase).reduce((a, p) => a + p.m, 0) * MIN() : 0 };
   },
   refresh() { renderPick(); renderCfg(); layout(); catchCount(); },
   layout() { layout(); }
