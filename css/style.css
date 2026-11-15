@@ -686,3 +686,9 @@ html.gated .scrim{background:radial-gradient(90% 70% at 50% 40%,rgba(8,10,16,.25
 .pp-share input{width:20px;height:20px;margin-top:2px;flex:none;accent-color:var(--acc)}
 .pp-share label{display:flex;flex-direction:column;gap:3px;cursor:pointer;font-size:.9rem}
 .pv-msg{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:60px 16px;color:var(--muted)}
+
+/* แถบแจ้งเมื่อโค้ดพัง */
+.crash-bar{position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:200;display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:#3A1414;border:1px solid #FF7D6E;color:#FFE3DE;font-size:.85rem;box-shadow:0 18px 40px -16px rgba(0,0,0,.8)}
+.crash-bar span{flex:1;min-width:0;overflow-wrap:anywhere}
+.crash-bar button{font:inherit;font-weight:600;padding:7px 14px;border-radius:999px;border:0;background:#FF7D6E;color:#2A0A06;cursor:pointer;flex:none}
+@media (max-width:760px){.crash-bar{bottom:calc(var(--nav-h) + 12px + env(safe-area-inset-bottom,0px))}}

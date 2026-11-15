@@ -45,7 +45,21 @@ document.addEventListener("scenechange", () => { if (A.page === "home") A.pages.
 
 A.onData = render;
 window.addEventListener("hashchange", route);
-route();
-A.startTimer();
-A.Auth.start();
+// เริ่มแต่ละส่วนแยกกัน: ส่วนไหนพัง ส่วนอื่น (โดยเฉพาะการล็อกอิน) ยังทำงานต่อได้
+if (window.__errs && __errs.length) showCrash(new Error(__errs[0]));
+[route, () => A.startTimer(), () => A.Auth.start()].forEach(fn => { try { fn(); } catch (e) { showCrash(e); } });
 })();
+
+/* ถ้ามี error ให้บอกผู้ใช้ (ครั้งเดียว) แทนการค้างเงียบ พร้อมข้อความที่แคปส่งให้ผู้พัฒนาได้ */
+function showCrash(e) {
+  if (window.console) console.error(e);
+  if (document.getElementById("crashBar")) return;
+  const msg = (e && (e.message || e.reason && e.reason.message)) || String(e);
+  const bar = document.createElement("div");
+  bar.id = "crashBar"; bar.className = "crash-bar"; bar.setAttribute("role", "alert");
+  const t = document.createElement("span");
+  t.textContent = "เว็บโหลดไม่สมบูรณ์ ลองกด Ctrl+Shift+R (มือถือ: ปิดแท็บแล้วเปิดใหม่) ถ้ายังไม่หาย แคปแถบนี้ส่งให้ผู้พัฒนา · " + msg.slice(0, 160);
+  const b = document.createElement("button"); b.type = "button"; b.textContent = "โหลดใหม่"; b.onclick = () => location.reload();
+  bar.append(t, b); document.body.append(bar);
+}
+window.addEventListener("error", ev => { if (ev.filename && ev.filename.includes("/js/")) showCrash(ev.error || ev.message); });
