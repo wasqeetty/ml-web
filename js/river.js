@@ -25,6 +25,8 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 let T = A.lsGet(LS, null) || { status: "idle" };
 if (!["idle", "running", "paused", "logging"].includes(T.status)) T = { status: "idle" };
 if (T.demo) { T = { status: "idle" }; A.lsSet(LS, T); }   // ล้างรอบทดลองที่ค้างจากเวอร์ชันก่อน (เอาโหมดทดลองออกแล้ว)
+if (typeof T.fish === "string") T.fish = [T.fish];          // รอบที่เริ่มก่อนเปลี่ยนเป็นปลา 3 ตัว
+const catchIds = () => (Array.isArray(T.fish) ? T.fish : []).filter(id => A.fish(id));
 const ui = { confirmQuit: false, drain: null };
 let previewP = 0;
 
@@ -79,7 +81,7 @@ $("tSubj").addEventListener("change", e => { A.pref.subjectId = e.target.value; 
 function start() {
   unlockAudio();
   const plan = planOf(cfg()), luck = A.fishLuck(focusTotal(plan), A.streak(A.byDay()));
-  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, phases: plan, season: pickSeason(), fish: A.pickFish(luck),
+  T = { status: "running", phase: 0, phaseStart: Date.now(), pausedAt: null, phases: plan, season: pickSeason(), fish: A.pickCatch(luck),
         subjectId: $("tSubj").value || "", topicTitle: $("tFree").value.trim().slice(0, 120) };
   saveT(); onStatus();
 }
@@ -163,36 +165,46 @@ function onStatus() {
   if (A.onTimer) A.onTimer();
 }
 
-/* นับว่าเป็นปลาตัวที่เท่าไหร่ (นับใหม่เมื่อข้อมูลโหลดเสร็จ กันขึ้น "ตัวแรก" ผิดตอนรีเฟรชหน้า) */
+/* ป้าย "ใหม่!" ของปลาแต่ละตัว (นับใหม่เมื่อข้อมูลโหลดเสร็จ กันขึ้น "ใหม่" ผิดตอนรีเฟรชหน้า) */
 function catchCount() {
-  const n = $("lfFishN"); if (!n || !A.fish(T.fish)) return;
-  if (["loading", "db-cache"].includes(A.store.mode)) { n.textContent = ""; return; }
-  const had = A.list("sessions").filter(s => s.fish === T.fish).length;
-  n.textContent = had ? `ตัวที่ ${had + 1} ในคอลเลกชัน` : "ตัวแรก! เพิ่มเข้าคอลเลกชันแล้ว";
+  const box = $("lfFish"); if (!box || box.hidden) return;
+  const tags = box.querySelectorAll(".lf-new"), n = $("lfFishN");
+  if (["loading", "db-cache"].includes(A.store.mode)) { tags.forEach(t => { t.hidden = true; }); if (n) n.textContent = ""; return; }
+  const had = {}; A.list("sessions").forEach(s => A.sessFish(s).forEach(id => { had[id] = (had[id] || 0) + 1; }));
+  const seen = {};
+  catchIds().forEach((id, i) => { const t = tags[i]; if (!t) return; t.hidden = !!(had[id] || seen[id]); seen[id] = 1; });
+  const nw = box.querySelectorAll(".lf-new:not([hidden])").length;
+  if (n) n.textContent = nw ? `ชนิดใหม่ ${nw} ตัว · เพิ่มเข้าคอลเลกชันแล้ว` : "เพิ่มเข้าคอลเลกชันแล้ว";
 }
-/* การ์ดจบรอบ: ปลาที่ได้ (ขยับหางวนไปเรื่อยๆ ตอนการ์ดเปิดอยู่) */
+/* การ์ดจบรอบ: ปลา 3 ตัวที่ได้ (ขยับหางวนไปเรื่อยๆ ตอนการ์ดเปิดอยู่) */
 let catchRaf = 0;
 function showCatch() {
-  const box = $("lfFish"), f = A.fish(T.fish);
+  const box = $("lfFish"), ids = catchIds();
   cancelAnimationFrame(catchRaf); box.textContent = "";
-  if (!f) { box.hidden = true; return; }
-  const R = A.RARITY[f.rarity];
-  const c = A.el("canvas", { class: "lf-fish-cv", width: 280, height: 140, role: "img", "aria-label": `ภาพ${f.name}` });
-  box.style.setProperty("--rc", R.color);
-  box.append(c, A.el("div", { class: "lf-fish-tx" },
-    A.el("span", { class: "rar r-" + f.rarity, text: R.name }),
-    A.el("b", { text: f.name }),
-    A.el("span", { class: "muted sm", id: "lfFishN" }),
-    A.el("span", { class: "lf-fish-desc", text: f.desc })));
+  if (!ids.length) { box.hidden = true; return; }
+  box.style.setProperty("--rc", A.RARITY[A.fish(A.rarest(ids)).rarity].color);
+  box.append(A.el("div", { class: "lf-catch-h" }, A.el("b", { text: `ได้ปลา ${ids.length} ตัว` }), A.el("span", { class: "muted sm", id: "lfFishN" })));
+  const row = A.el("ul", { class: "lf-catch" }), cvs = [];
+  ids.forEach(id => {
+    const f = A.fish(id), R = A.RARITY[f.rarity];
+    const c = A.el("canvas", { class: "lf-fish-cv", width: 200, height: 110, role: "img", "aria-label": `${f.name} ระดับ${R.name}` });
+    const tag = A.el("span", { class: "lf-new", text: "ใหม่!" }); tag.hidden = true;
+    row.append(A.el("li", { class: "lf-fi", style: `--rc:${R.color}`, title: f.desc },
+      tag, c, A.el("span", { class: "rar r-" + f.rarity, text: R.name }), A.el("b", { text: f.name })));
+    cvs.push([c.getContext("2d"), f, R]);
+  });
+  box.append(row);
   box.hidden = false; catchCount();
-  const g = c.getContext("2d"), t0 = performance.now();
+  const t0 = performance.now();
   (function tick(now) {
-    if ($("logform").hidden || !c.isConnected) return;
+    if ($("logform").hidden || !row.isConnected) return;
     const t = (now - t0) / 1000;
-    g.clearRect(0, 0, 280, 140);
-    const gr = g.createRadialGradient(140, 70, 0, 140, 70, 120); gr.addColorStop(0, R.color + "55"); gr.addColorStop(1, R.color + "00");
-    g.fillStyle = gr; g.fillRect(0, 0, 280, 140);
-    A.drawFish(g, f.id, 150, 72 + Math.sin(t * 1.4) * 4, 110 * Math.min(1.15, f.size), t, { dir: 1 });
+    cvs.forEach(([g, f, R], i) => {
+      g.clearRect(0, 0, 200, 110);
+      const gr = g.createRadialGradient(100, 55, 0, 100, 55, 90); gr.addColorStop(0, R.color + "55"); gr.addColorStop(1, R.color + "00");
+      g.fillStyle = gr; g.fillRect(0, 0, 200, 110);
+      A.drawFish(g, f.id, 104, 56 + Math.sin(t * 1.4 + i * 2) * 4, 84 * Math.min(1.15, f.size), t + i, { dir: 1 });
+    });
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) catchRaf = requestAnimationFrame(tick);
   })(t0);
 }
@@ -276,7 +288,7 @@ $("logF").addEventListener("submit", async e => {
     subjectId: T.subjectId || "", topicTitle: T.topicTitle || "",
     note: $("lfNote").value.trim().slice(0, 2000),
     rating: Number((document.querySelector('input[name="rate"]:checked') || {}).value || 3),
-    focusMin: focusTotal(PH()), riverImg: T.img || "", season: T.season || "", fish: T.fish || ""
+    focusMin: focusTotal(PH()), riverImg: T.img || "", season: T.season || "", fish: A.rarest(catchIds()), catch: catchIds()
   };
   const id = `s-${rec.date}-${pad(fin.getHours())}${pad(fin.getMinutes())}${pad(fin.getSeconds())}`;
   try {
@@ -444,9 +456,9 @@ function draw(p, flowT, life) {
     const [x, y] = landY(s, 30 + s.r * H * 0.17), r = (7 + s.sp * 8) * k;
     cx.fillStyle = "rgba(0,0,0,.14)"; cx.beginPath(); cx.ellipse(x + 3, y + 3, r, r * 0.6, 0, 0, Math.PI * 2); cx.fill();
     const leafC = lerpC(C.lush, [24, 74, 34], 0.55);
-    cx.fillStyle = rgb(k > 0 ? lerpC(leafC, S.canopy[i % S.canopy.length], k) : leafC); cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
+    cx.fillStyle = rgb(S && k > 0 ? lerpC(leafC, S.canopy[i % S.canopy.length], k) : leafC); cx.beginPath(); cx.arc(x, y, r, 0, Math.PI * 2); cx.fill();
     cx.fillStyle = mix(C.lush, [255, 255, 255], 0.18, 0.8 * (1 - k * 0.6)); cx.beginPath(); cx.arc(x - r * 0.3, y - r * 0.3, r * 0.45, 0, Math.PI * 2); cx.fill();
-    if (k > 0 && S.snowcap) { cx.fillStyle = `rgba(250,252,255,${0.92 * k})`; cx.beginPath(); cx.arc(x, y - r * 0.12, r * 0.86, Math.PI * 1.05, Math.PI * 1.95); cx.closePath(); cx.fill(); }
+    if (S && k > 0 && S.snowcap) { cx.fillStyle = `rgba(250,252,255,${0.92 * k})`; cx.beginPath(); cx.arc(x, y - r * 0.12, r * 0.86, Math.PI * 1.05, Math.PI * 1.95); cx.closePath(); cx.fill(); }
   });
   const ba = S && S.fall === "firefly" ? 0 : smooth(0.97, 1, p);
   if (ba > 0) {
@@ -458,22 +470,24 @@ function draw(p, flowT, life) {
 }
 
 function drawFeatured(p, life) {
-  if (T.status === "idle" || !A.fish(T.fish)) return;
-  const show = smooth(0.5, 0.6, p), col = smooth(0.8, 0.98, p);
-  if (show <= 0) return;
-  const f = A.fish(T.fish), R = A.RARITY[f.rarity];
-  const L = Math.max(22, Math.min(W, H) * 0.09) * f.size;
-  const span = W + L * 4, x = mod(W * 0.62 - life * 16, span) - L * 2;   // ว่ายทวนน้ำช้าๆ เริ่มกลางจอ
-  const y = ry(x) + Math.sin(life * 0.7) * hw(x) * 0.35;
-  cx.save(); cx.translate(x, y); cx.rotate(Math.atan2(ry(x + 4) - ry(x), 4));
-  if (col > 0 && R.rank >= 2) {
-    const gr = cx.createRadialGradient(0, 0, 0, 0, 0, L * 1.1);
-    gr.addColorStop(0, R.color + "66"); gr.addColorStop(1, R.color + "00");
-    cx.globalAlpha = show * col; cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, L * 1.1, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
-  }
-  if (col < 1) A.drawFish(cx, f.id, 0, 0, L, life, { dir: -1, alpha: show * (1 - col) * 0.55, silhouette: "rgb(20,30,40)" });
-  if (col > 0) A.drawFish(cx, f.id, 0, 0, L, life, { dir: -1, alpha: show * col });
-  cx.restore();
+  if (T.status === "idle") return;
+  catchIds().forEach((id, i) => {
+    const show = smooth(0.5 + i * 0.05, 0.6 + i * 0.05, p), col = smooth(0.8 + i * 0.04, 0.9 + i * 0.04, p);
+    if (show <= 0) return;
+    const f = A.fish(id), R = A.RARITY[f.rarity];
+    const L = Math.max(20, Math.min(W, H) * 0.08) * f.size;
+    const span = W + L * 4, x = mod(W * (0.62 + i * 0.29) - life * (16 + i * 3), span) - L * 2;   // ว่ายทวนน้ำช้าๆ คนละระยะ
+    const y = ry(x) + Math.sin(life * 0.7 + i * 2.1) * hw(x) * 0.2 + (i - 1) * hw(x) * 0.3;
+    cx.save(); cx.translate(x, y); cx.rotate(Math.atan2(ry(x + 4) - ry(x), 4));
+    if (col > 0 && R.rank >= 2) {
+      const gr = cx.createRadialGradient(0, 0, 0, 0, 0, L * 1.1);
+      gr.addColorStop(0, R.color + "66"); gr.addColorStop(1, R.color + "00");
+      cx.globalAlpha = show * col; cx.fillStyle = gr; cx.beginPath(); cx.arc(0, 0, L * 1.1, 0, Math.PI * 2); cx.fill(); cx.globalAlpha = 1;
+    }
+    if (col < 1) A.drawFish(cx, f.id, 0, 0, L, life + i, { dir: -1, alpha: show * (1 - col) * 0.55, silhouette: "rgb(20,30,40)" });
+    if (col > 0) A.drawFish(cx, f.id, 0, 0, L, life + i, { dir: -1, alpha: show * col });
+    cx.restore();
+  });
 }
 
 function flowSpeed() {

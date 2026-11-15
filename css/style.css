@@ -698,11 +698,20 @@ html.gated .scrim{background:radial-gradient(90% 70% at 50% 40%,rgba(8,10,16,.25
 /* การ์ดจบรอบ: ปลาที่ได้ */
 .lf-fish{display:flex;align-items:center;gap:14px;margin:6px 0 4px;padding:10px 14px 10px 6px;border-radius:16px;
   background:linear-gradient(120deg,color-mix(in srgb,var(--rc,#62B4FF) 16%,transparent),rgba(255,255,255,.03));border:1px solid color-mix(in srgb,var(--rc,#62B4FF) 45%,transparent)}
-.lf-fish-cv{width:140px;height:70px;flex:none}
+.lf-fish{flex-direction:column;align-items:stretch;gap:8px;padding:12px 12px 10px}
+.lf-catch-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:0 4px}
+.lf-catch-h b{font-family:var(--f-display);font-weight:500;font-size:1.1rem;color:#fff}
+.lf-catch{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.lf-fi{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 4px 8px;border-radius:12px;text-align:center;
+  background:color-mix(in srgb,var(--rc) 12%,rgba(255,255,255,.03));border:1px solid color-mix(in srgb,var(--rc) 40%,transparent)}
+.lf-fi b{font-family:var(--f-display);font-weight:500;font-size:.95rem;color:#fff;line-height:1.25}
+.lf-new{position:absolute;top:5px;right:5px;font-size:.66rem;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent);color:var(--accent-fg)}
+.lf-new[hidden]{display:none}
+.lf-fish-cv{width:100%;max-width:150px;height:auto;aspect-ratio:200/110;flex:none}
 .lf-fish-tx{display:flex;flex-direction:column;gap:3px;min-width:0;text-align:left}
 .lf-fish-tx b{font-family:var(--f-display);font-weight:500;font-size:1.25rem;color:#fff}
 .lf-fish-desc{font-size:.78rem;color:rgba(255,255,255,.7);line-height:1.4}
-@media (max-width:480px){.lf-fish{flex-direction:column;text-align:center;padding:10px}.lf-fish-tx{align-items:center;text-align:center}}
+@media (max-width:480px){.lf-catch{gap:6px}.lf-fi b{font-size:.82rem}.lf-fi .rar{font-size:.6rem;padding:1px 6px}}
 
 /* ---------- โปรไฟล์: แม่น้ำของตัวเอง ---------- */
 .pv-cover{height:clamp(220px,30vw,300px);background:#0F2A44;isolation:isolate}

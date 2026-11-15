@@ -54,6 +54,12 @@ A.pickFish = luck => {
   const pool = A.FISH.filter(f => f.rarity === tier);
   return pool[Math.floor(Math.random() * pool.length)].id;
 };
+/* จบ 1 รอบได้ปลา 3 ตัว: สุ่มแยกกันทีละตัวตามเรทเดิม ชนิดซ้ำกันได้ */
+A.CATCH_N = 3;
+A.pickCatch = luck => Array.from({ length: A.CATCH_N }, () => A.pickFish(luck));
+/* ปลาของบันทึกหนึ่งรอบ: รอบใหม่เก็บใน catch (รายการ), รอบเก่ามีแค่ fish ตัวเดียว */
+A.sessFish = s => !s ? [] : Array.isArray(s.catch) ? s.catch.filter(id => A.fish(id)) : (A.fish(s.fish) ? [s.fish] : []);
+A.rarest = ids => [...ids].sort((a, b) => A.RARITY[A.fish(b).rarity].rank - A.RARITY[A.fish(a).rarity].rank)[0] || "";
 A.fishLuck = (focusMin, streak) => 0.5 * Math.min(1, (focusMin || 0) / 100) + 0.5 * Math.min(1, (streak || 0) / 14);
 
 /* ---------- วาดปลา (มองจากด้านข้าง หัวหันไปทางขวา) ----------

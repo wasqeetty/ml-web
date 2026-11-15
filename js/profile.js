@@ -57,7 +57,7 @@ function computeStats() {
   });
   const mins = sess.reduce((a, s) => a + (s.focusMin || 0), 0);
   const seasons = {}; sess.forEach(s => { if (SEASON_KEYS.includes(s.season)) seasons[s.season] = (seasons[s.season] || 0) + 1; });
-  const fish = {}; sess.forEach(s => { if (A.fish(s.fish)) fish[s.fish] = (fish[s.fish] || 0) + 1; });
+  const fish = {}; sess.forEach(s => A.sessFish(s).forEach(id => { fish[id] = (fish[id] || 0) + 1; }));
   const bySub = {}; sess.forEach(s => { bySub[s.subjectId || ""] = (bySub[s.subjectId || ""] || 0) + (s.focusMin || 0); });
   const subjects = Object.entries(bySub).sort((a, b) => b[1] - a[1]).slice(0, 5)
     .map(([id, m]) => { const sb = A.subj(id); return { name: sb.name, color: sb.color | 0, mins: m }; });
